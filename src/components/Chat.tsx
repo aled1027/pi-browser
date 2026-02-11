@@ -1,6 +1,9 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Agent } from "../agent";
+import type { PromptTemplate } from "../prompt-templates";
+import type { UserInputRequest, UserInputResponse } from "../extensions";
 import type { ToolCall } from "../types";
+import { UserInputForm } from "./UserInputForm";
 import "./Chat.css";
 
 interface ChatMessage {
@@ -19,18 +22,65 @@ export function Chat({ agent }: Props) {
   const [streaming, setStreaming] = useState(false);
   const [streamText, setStreamText] = useState("");
   const [streamToolCalls, setStreamToolCalls] = useState<ToolCall[]>([]);
+  const [pendingInput, setPendingInput] = useState<{
+    request: UserInputRequest;
+    resolve: (response: UserInputResponse) => void;
+  } | null>(null);
+  const [suggestions, setSuggestions] = useState<PromptTemplate[]>([]);
+  const [selectedSuggestion, setSelectedSuggestion] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Wire up the user input handler so extensions can request input
+  useEffect(() => {
+    agent.setUserInputHandler((request) => {
+      return new Promise<UserInputResponse>((resolve) => {
+        setPendingInput({ request, resolve });
+      });
+    });
+  }, [agent]);
 
   // Auto-scroll to bottom
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, streamText, streamToolCalls]);
 
+  // Autocomplete for prompt templates
+  useEffect(() => {
+    const trimmed = input.trim();
+    if (trimmed.startsWith("/") && !trimmed.includes(" ")) {
+      const prefix = trimmed.slice(1);
+      const matches = agent.promptTemplates.search(prefix);
+      setSuggestions(matches);
+      setSelectedSuggestion(0);
+    } else {
+      setSuggestions([]);
+    }
+  }, [input, agent]);
+
+  const handleUserInputSubmit = useCallback(
+    (response: UserInputResponse) => {
+      if (pendingInput) {
+        pendingInput.resolve(response);
+        setPendingInput(null);
+      }
+    },
+    [pendingInput]
+  );
+
+  const acceptSuggestion = useCallback(
+    (template: PromptTemplate) => {
+      setInput(`/${template.name} `);
+      setSuggestions([]);
+    },
+    []
+  );
+
   const handleSubmit = useCallback(async () => {
     const text = input.trim();
     if (!text || streaming) return;
 
     setInput("");
+    setSuggestions([]);
     setMessages((prev) => [...prev, { role: "user", content: text }]);
     setStreaming(true);
     setStreamText("");
@@ -85,6 +135,44 @@ export function Chat({ agent }: Props) {
     setStreaming(false);
   }, [agent, input, streaming]);
 
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      // Autocomplete navigation
+      if (suggestions.length > 0) {
+        if (e.key === "ArrowDown") {
+          e.preventDefault();
+          setSelectedSuggestion((prev) =>
+            prev < suggestions.length - 1 ? prev + 1 : 0
+          );
+          return;
+        }
+        if (e.key === "ArrowUp") {
+          e.preventDefault();
+          setSelectedSuggestion((prev) =>
+            prev > 0 ? prev - 1 : suggestions.length - 1
+          );
+          return;
+        }
+        if (e.key === "Tab" || (e.key === "Enter" && !e.shiftKey)) {
+          e.preventDefault();
+          acceptSuggestion(suggestions[selectedSuggestion]);
+          return;
+        }
+        if (e.key === "Escape") {
+          setSuggestions([]);
+          return;
+        }
+      }
+
+      // Normal submit
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        handleSubmit();
+      }
+    },
+    [suggestions, selectedSuggestion, acceptSuggestion, handleSubmit]
+  );
+
   return (
     <div className="chat">
       <div className="chat-header">
@@ -113,20 +201,32 @@ export function Chat({ agent }: Props) {
       </div>
 
       <div className="chat-input-area">
-        <textarea
-          className="chat-input"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Send a message..."
-          rows={1}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" && !e.shiftKey) {
-              e.preventDefault();
-              handleSubmit();
-            }
-          }}
-          disabled={streaming}
-        />
+        <div className="chat-input-wrapper">
+          {suggestions.length > 0 && (
+            <div className="autocomplete">
+              {suggestions.map((t, i) => (
+                <div
+                  key={t.name}
+                  className={`autocomplete-item ${i === selectedSuggestion ? "selected" : ""}`}
+                  onMouseEnter={() => setSelectedSuggestion(i)}
+                  onClick={() => acceptSuggestion(t)}
+                >
+                  <span className="autocomplete-name">/{t.name}</span>
+                  <span className="autocomplete-desc">{t.description}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <textarea
+            className="chat-input"
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Send a message… (type / for templates)"
+            rows={1}
+            onKeyDown={handleKeyDown}
+            disabled={streaming}
+          />
+        </div>
         <button
           className="chat-send"
           onClick={streaming ? () => agent.abort() : handleSubmit}
@@ -135,6 +235,13 @@ export function Chat({ agent }: Props) {
           {streaming ? "Stop" : "Send"}
         </button>
       </div>
+
+      {pendingInput && (
+        <UserInputForm
+          request={pendingInput.request}
+          onSubmit={handleUserInputSubmit}
+        />
+      )}
     </div>
   );
 }
