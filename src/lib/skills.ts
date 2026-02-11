@@ -9,7 +9,7 @@
  * registered programmatically rather than discovered from disk.
  */
 
-import type { ToolDefinition, ToolResult } from "./types";
+import type { ToolDefinition, ToolResult } from "./types.js";
 
 // ─── Skill definition ───────────────────────────────────────────────
 

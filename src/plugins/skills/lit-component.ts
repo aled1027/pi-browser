@@ -1,6 +1,6 @@
-import type { Skill } from "../skills";
+import type { Skill } from "../../lib/index.js";
 
-export const reactComponentSkill: Skill = {
+export const litComponentSkill: Skill = {
   name: "lit-component",
   description:
     "Create well-structured Lit web components with TypeScript. Use when asked to build UI components, pages, or web component features.",

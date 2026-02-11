@@ -12,7 +12,7 @@
  *   ask_user({ question: "Proceed with deletion?", fields: [{ name: "ok", label: "Confirm", type: "confirm" }] })
  */
 
-import type { Extension } from "../extensions";
+import type { Extension } from "../../lib/index.js";
 
 export const askUserExtension: Extension = (api) => {
   api.registerTool({

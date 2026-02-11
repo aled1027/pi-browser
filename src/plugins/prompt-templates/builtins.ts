@@ -1,4 +1,4 @@
-import type { PromptTemplate } from "../prompt-templates";
+import type { PromptTemplate } from "../../lib/index.js";
 
 export const builtinTemplates: PromptTemplate[] = [
   {

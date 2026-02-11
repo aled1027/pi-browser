@@ -6,7 +6,7 @@
  * and can call them during its response.
  */
 
-import type { ToolDefinition, ToolResult } from "./types";
+import type { ToolDefinition, ToolResult } from "./types.js";
 
 function ok(content: string): ToolResult {
   return { content, isError: false };

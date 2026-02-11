@@ -1,11 +1,9 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { Agent } from "../agent";
-import { askUserExtension } from "../extensions/ask-user";
-import { codeReviewSkill, reactComponentSkill } from "../skills/index";
-import { builtinTemplates } from "../prompt-templates/builtins";
-import "./api-key-screen";
-import "./chat-view";
+import { Agent } from "../../lib/index.js";
+import { askUserExtension, codeReviewSkill, litComponentSkill, builtinTemplates } from "../../plugins/index.js";
+import "./api-key-screen.js";
+import "./chat-view.js";
 
 @customElement("app-root")
 export class AppRoot extends LitElement {
@@ -28,7 +26,7 @@ export class AppRoot extends LitElement {
     this.agent = new Agent({
       apiKey: key,
       extensions: [askUserExtension],
-      skills: [codeReviewSkill, reactComponentSkill],
+      skills: [codeReviewSkill, litComponentSkill],
       promptTemplates: builtinTemplates,
     });
     this.started = true;

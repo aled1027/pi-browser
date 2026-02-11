@@ -5,15 +5,15 @@
  * manages the tool set, and drives the streaming tool loop.
  */
 
-import type { Message, AgentEvent, ToolDefinition } from "./types";
-import type { Extension, UserInputRequest, UserInputResponse } from "./extensions";
-import type { Skill } from "./skills";
-import type { PromptTemplate } from "./prompt-templates";
-import { ExtensionRegistry } from "./extensions";
-import { SkillRegistry } from "./skills";
-import { PromptTemplateRegistry } from "./prompt-templates";
-import { runAgent } from "./openrouter";
-import { VirtualFS, createTools } from "./tools";
+import type { Message, AgentEvent, ToolDefinition } from "./types.js";
+import type { Extension, UserInputRequest, UserInputResponse } from "./extensions.js";
+import type { Skill } from "./skills.js";
+import type { PromptTemplate } from "./prompt-templates.js";
+import { ExtensionRegistry } from "./extensions.js";
+import { SkillRegistry } from "./skills.js";
+import { PromptTemplateRegistry } from "./prompt-templates.js";
+import { runAgent } from "./openrouter.js";
+import { VirtualFS, createTools } from "./tools.js";
 
 export interface AgentConfig {
   apiKey: string;

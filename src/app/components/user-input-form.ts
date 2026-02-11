@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { UserInputRequest, UserInputField } from "../extensions";
+import type { UserInputRequest, UserInputField } from "../../lib/index.js";
 
 @customElement("user-input-form")
 export class UserInputFormEl extends LitElement {

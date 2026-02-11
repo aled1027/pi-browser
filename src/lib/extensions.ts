@@ -8,7 +8,7 @@
  * extensions plug capabilities into it.
  */
 
-import type { ToolDefinition, AgentEvent } from "./types";
+import type { ToolDefinition, AgentEvent } from "./types.js";
 
 // ─── User input requests ────────────────────────────────────────────
 

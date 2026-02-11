@@ -1,4 +1,4 @@
-import type { Skill } from "../skills";
+import type { Skill } from "../../lib/index.js";
 
 export const codeReviewSkill: Skill = {
   name: "code-review",

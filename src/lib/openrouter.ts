@@ -5,7 +5,7 @@
  * Handles tool calls and multi-turn tool loops.
  */
 
-import type { Message, ToolDefinition, AgentEvent, ToolCall, ToolResult } from "./types";
+import type { Message, ToolDefinition, AgentEvent, ToolCall, ToolResult } from "./types.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
@@ -42,7 +42,7 @@ export async function* runAgent(
   const model = options.model ?? DEFAULT_MODEL;
 
   // Build OpenAI-format messages
-  let openaiMessages = messages.map((m) => ({
+  const openaiMessages = messages.map((m) => ({
     role: m.role,
     content: m.content,
   }));
