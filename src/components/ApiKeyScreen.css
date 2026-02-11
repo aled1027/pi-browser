@@ -1,0 +1,76 @@
+.apikey-screen {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.apikey-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 32px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-secondary);
+  width: 400px;
+  max-width: 90vw;
+}
+
+.apikey-card h1 {
+  font-size: 24px;
+  color: var(--accent);
+}
+
+.apikey-card .subtitle {
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+
+.apikey-card label {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.apikey-card input {
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--bg-input);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+  outline: none;
+}
+
+.apikey-card input:focus {
+  border-color: var(--accent);
+}
+
+.apikey-card button {
+  padding: 10px;
+  border: none;
+  border-radius: 4px;
+  background: var(--accent);
+  color: var(--bg);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.apikey-card button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.apikey-card .hint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.apikey-card .hint a {
+  color: var(--accent);
+}

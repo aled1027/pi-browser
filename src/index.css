@@ -1,0 +1,33 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-input: #0f3460;
+  --text: #e0e0e0;
+  --text-muted: #8888aa;
+  --accent: #53c7f0;
+  --accent-dim: #2a6f8a;
+  --border: #2a2a4a;
+  --error: #e74c3c;
+  --tool-bg: #1e1e3a;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}
