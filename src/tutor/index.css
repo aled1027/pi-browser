@@ -1,0 +1,38 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-input: #0f3460;
+  --bg-editor: #0d1b2a;
+  --text: #e0e0e0;
+  --text-muted: #8888aa;
+  --accent: #53c7f0;
+  --accent-dim: #2a6f8a;
+  --accent-green: #2ecc71;
+  --accent-yellow: #f1c40f;
+  --border: #2a2a4a;
+  --error: #e74c3c;
+  --tool-bg: #1e1e3a;
+  --success-bg: rgba(46, 204, 113, 0.1);
+  --error-bg: rgba(231, 76, 60, 0.1);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  font-family: "SF Mono", "Fira Code", "Cascadia Code", monospace;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--text);
+}

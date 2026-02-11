@@ -427,7 +427,10 @@ export class ChatView extends LitElement {
     return html`
       <div class="header">
         <span class="title">π browser</span>
-        <span class="model">anthropic/claude-sonnet-4</span>
+        <span>
+          <span class="model">anthropic/claude-sonnet-4</span>
+          <a href="/tutor.html" style="color: var(--accent); font-size: 12px; margin-left: 12px; text-decoration: none; opacity: 0.7;">→ tutor</a>
+        </span>
       </div>
 
       <div class="messages">
