@@ -98,6 +98,15 @@ function idbDelete(db: IDBDatabase, store: string, key: string): Promise<void> {
   });
 }
 
+function idbClear(db: IDBDatabase, store: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(store, "readwrite");
+    tx.objectStore(store).clear();
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
 // ---------------------------------------------------------------------------
 // ThreadStorage
 // ---------------------------------------------------------------------------
@@ -181,5 +190,24 @@ export class ThreadStorage {
   async loadVFS(): Promise<Record<string, string>> {
     const db = await this.dbPromise;
     return (await idbGet<Record<string, string>>(db, STORE_AGENT_VFS, "vfs")) ?? {};
+  }
+
+  /**
+   * Delete all threads (metadata + messages) and the VFS store.
+   * Clears localStorage thread list and active thread, and wipes
+   * all IndexedDB object stores.
+   */
+  async clearAll(): Promise<void> {
+    // Clear localStorage
+    localStorage.removeItem(LS_THREAD_LIST);
+    localStorage.removeItem(LS_ACTIVE_THREAD);
+
+    // Clear all IndexedDB stores
+    const db = await this.dbPromise;
+    await Promise.all([
+      idbClear(db, STORE_MESSAGES),
+      idbClear(db, STORE_FS),
+      idbClear(db, STORE_AGENT_VFS),
+    ]);
   }
 }

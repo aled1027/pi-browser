@@ -98,6 +98,15 @@ export class ExtensionRegistry {
   }
 
   /**
+   * Remove all registered tools and ownership tracking.
+   * Event listeners and the user-input handler are preserved.
+   */
+  clear(): void {
+    this.tools = [];
+    this.toolOwnership.clear();
+  }
+
+  /**
    * Unregister all tools owned by an extension.
    */
   unregisterToolsByExtension(extensionName: string): void {

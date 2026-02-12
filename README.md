@@ -6,7 +6,6 @@ Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/
 
 ## TODO:
 
-  - Add a function that's delete state so the user can restart
 - Later: sync state or export. export would be download a zip and maybe could
 
 ## Quick start

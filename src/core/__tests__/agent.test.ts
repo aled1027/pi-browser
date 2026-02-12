@@ -29,6 +29,7 @@ vi.mock("../storage.js", () => {
     async getMessages(threadId: string) { return this.messages.get(threadId) ?? []; }
     async saveVFS(files: Record<string, string>) { this.vfs = files; }
     async loadVFS() { return this.vfs; }
+    async clearAll() { this.threads.clear(); this.messages.clear(); this.activeId = null; this.vfs = {}; }
   }
   return { ThreadStorage: FakeThreadStorage };
 });
@@ -296,6 +297,39 @@ describe("Agent.prompt()", () => {
     const messages = agent.getMessages();
     const userMsg = messages.find(m => m.role === "user");
     expect(userMsg!.content).toBe("Hello World, nice to meet you!");
+  });
+
+  it("should reset all state (threads, VFS, messages)", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("hello"), turnEnd()]));
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    const oldThreadId = agent.activeThreadId;
+
+    // Add some data
+    await agent.prompt("hi");
+    agent.fs.write("/foo.txt", "bar");
+
+    // Verify data exists
+    expect(agent.getMessages().some(m => m.role === "user")).toBe(true);
+    expect(agent.fs.read("/foo.txt")).toBe("bar");
+
+    // Reset
+    await agent.reset();
+
+    // Thread should be new
+    expect(agent.activeThreadId).not.toBe(oldThreadId);
+    expect(agent.activeThreadId).toBeTruthy();
+
+    // Messages should only have system prompt
+    const messages = agent.getMessages();
+    expect(messages.length).toBe(1);
+    expect(messages[0].role).toBe("system");
+
+    // VFS should be empty
+    expect(agent.fs.read("/foo.txt")).toBeUndefined();
+
+    // Should still have exactly one thread
+    expect(agent.listThreads().length).toBe(1);
   });
 
   it("should pass the api key and model to runAgent", async () => {

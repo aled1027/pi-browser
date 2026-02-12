@@ -432,6 +432,34 @@ export class Agent implements ExtensionHost {
     }
   }
 
+  /**
+   * Reset the agent to a clean state: delete all threads and clear the
+   * virtual filesystem. After reset, a fresh empty thread is created
+   * and set as active.
+   */
+  async reset(): Promise<void> {
+    // Abort any in-flight request
+    this.abort();
+
+    // Wipe all persisted data (threads + VFS)
+    await this.storage.clearAll();
+
+    // Reset in-memory VFS
+    this._fs = new VirtualFS();
+    this.builtinTools = createTools(this._fs);
+
+    // Clear extension-registered tools (extensions from VFS are gone)
+    this.extensions.clear();
+
+    // Re-load config extensions (non-VFS ones)
+    await this.extensions.load(this.config.extensions ?? [], this);
+
+    // Reset messages and create a fresh thread
+    this._activeThreadId = null;
+    this.initFreshMessages();
+    await this.restoreOrCreateThread();
+  }
+
   /** Rename a thread */
   renameThread(threadId: string, name: string): void {
     const meta = this.storage.getThread(threadId);
