@@ -2,6 +2,8 @@
 
 A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/). Includes a core agent library and several example applications.
 
+Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
+
 ## Setup
 
 Requires [Node.js](https://nodejs.org/) (v18+).
@@ -30,16 +32,3 @@ npm run dev:chat             # or dev:tutor, dev:sveltekit
 
 Examples import the library as `"pi-browser"` via `file:` references resolved through npm workspaces.
 
-## Project Structure
-
-```
-src/core/              Core agent library source
-dist/                  Built library (via Rollup)
-examples/
-  chat/                Vanilla chat example
-  tutor/               Tutor example
-  sveltekit-chat/      SvelteKit example
-rollup.config.js       Rollup build config
-tsconfig.json          TypeScript config (type-checking)
-tsconfig.build.json    TypeScript config (library build)
-```
