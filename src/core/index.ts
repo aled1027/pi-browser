@@ -14,6 +14,7 @@ export type {
 
 export type {
   Extension,
+  ExtensionHost,
   PiBrowserAPI,
   UserInputField,
   UserInputRequest,
@@ -21,6 +22,7 @@ export type {
 } from "./extensions.js";
 
 export type { Skill } from "./skills.js";
+export { parseSkillMarkdown, serializeSkillMarkdown } from "./skills.js";
 
 export type { PromptTemplate } from "./prompt-templates.js";
 

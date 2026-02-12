@@ -4,14 +4,20 @@
  * Orchestrates messages, tools, extensions, skills, templates,
  * thread management, and persistence. This is the only class
  * that examples need to interact with.
+ *
+ * VFS is per-agent (shared across threads), persisted independently.
+ * Threads only persist messages.
+ *
+ * The Agent implements ExtensionHost so extensions receive the Agent
+ * directly and can call registerTool(), on(), requestUserInput().
  */
 
 import type { Message, AgentEvent, ToolDefinition, PromptResult, PromptCallbacks } from "./types.js";
-import type { Extension, UserInputRequest, UserInputResponse } from "./extensions.js";
+import type { Extension, UserInputRequest, UserInputResponse, ExtensionHost } from "./extensions.js";
 import type { Skill } from "./skills.js";
 import type { PromptTemplate } from "./prompt-templates.js";
 import { ExtensionRegistry } from "./extensions.js";
-import { SkillRegistry } from "./skills.js";
+import { SkillRegistry, parseSkillMarkdown, serializeSkillMarkdown } from "./skills.js";
 import { PromptTemplateRegistry } from "./prompt-templates.js";
 import { runAgent } from "./openrouter.js";
 import { VirtualFS, createTools } from "./tools.js";
@@ -27,6 +33,10 @@ export interface AgentConfig {
   skills?: Skill[];
   promptTemplates?: PromptTemplate[];
 }
+
+const PI_BROWSER_DIR = "/.pi-browser";
+const EXTENSIONS_DIR = `${PI_BROWSER_DIR}/extensions`;
+const SKILLS_DIR = `${PI_BROWSER_DIR}/skills`;
 
 const DEFAULT_SYSTEM_PROMPT = `You are pi-browser, a coding agent that runs entirely in the browser.
 
@@ -62,7 +72,7 @@ The user can type \`/name\` commands in the chat input to expand prompt template
 - When a task matches an available skill, load and follow that skill's instructions.
 - Remember that files only exist in the virtual filesystem. If the user mentions a file, check if it exists with \`list\` or \`read\` first.`;
 
-export class Agent {
+export class Agent implements ExtensionHost {
   readonly extensions: ExtensionRegistry;
   readonly skills: SkillRegistry;
   readonly promptTemplates: PromptTemplateRegistry;
@@ -105,8 +115,9 @@ export class Agent {
 
     this.initFreshMessages();
 
-    // Load extensions asynchronously
-    this._ready = this.extensions.load(config.extensions ?? []);
+    // Load VFS from storage, then auto-load extensions/skills from VFS,
+    // then load config extensions
+    this._ready = this.initAsync();
   }
 
   /**
@@ -115,8 +126,35 @@ export class Agent {
    */
   static async create(config: AgentConfig): Promise<Agent> {
     const agent = new Agent(config);
+    await agent.ready();
     await agent.restoreOrCreateThread();
     return agent;
+  }
+
+  // ---------------------------------------------------------------------------
+  // ExtensionHost implementation
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Register a tool the model can call.
+   * Extensions call this to add tools. Optionally pass extensionName for tracking.
+   */
+  registerTool(tool: ToolDefinition, extensionName?: string): void {
+    this.extensions.registerTool(tool, extensionName);
+  }
+
+  /**
+   * Subscribe to agent events (returns unsubscribe fn).
+   */
+  on(event: "agent_event", handler: (e: AgentEvent) => void): () => void {
+    return this.extensions.on(event, handler);
+  }
+
+  /**
+   * Request input from the user via a browser form.
+   */
+  requestUserInput(request: UserInputRequest): Promise<UserInputResponse> {
+    return this.extensions.requestUserInput(request);
   }
 
   // ---------------------------------------------------------------------------
@@ -159,6 +197,81 @@ export class Agent {
   }
 
   // ---------------------------------------------------------------------------
+  // Dynamic extension management
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Add an extension from source code, execute it immediately, and persist
+   * to VFS for automatic future loading.
+   *
+   * @param source - JavaScript source of the extension function.
+   *                 Must be a function expression: `(agent) => { ... }`
+   * @param filename - Name for the extension file (without path/extension).
+   *                   Used as the extension identifier.
+   */
+  async addExtension(source: string, filename: string): Promise<void> {
+    // Eval and execute immediately
+    const fn = new Function("return " + source)() as Extension;
+    if (typeof fn !== "function") {
+      throw new Error(`Extension source must evaluate to a function`);
+    }
+
+    // Create a scoped host that tracks tools under this extension name
+    const scopedHost: ExtensionHost = {
+      registerTool: (tool: ToolDefinition) => {
+        this.registerTool(tool, filename);
+      },
+      on: (event: "agent_event", handler: (e: AgentEvent) => void) => {
+        return this.on(event, handler);
+      },
+      requestUserInput: (req: UserInputRequest) => {
+        return this.requestUserInput(req);
+      },
+    };
+
+    await fn(scopedHost);
+
+    // Persist to VFS
+    this._fs.write(`${EXTENSIONS_DIR}/${filename}.js`, source);
+    await this.persistVFS();
+  }
+
+  /**
+   * Remove a previously added extension by name.
+   * Unregisters its tools and removes from VFS.
+   */
+  async removeExtension(name: string): Promise<void> {
+    this.extensions.unregisterToolsByExtension(name);
+    this._fs.delete(`${EXTENSIONS_DIR}/${name}.js`);
+    await this.persistVFS();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dynamic skill management
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Add a skill, register it immediately, and persist to VFS.
+   */
+  async addSkill(skill: Skill): Promise<void> {
+    this.skills.register(skill);
+    this._fs.write(
+      `${SKILLS_DIR}/${skill.name}.md`,
+      serializeSkillMarkdown(skill)
+    );
+    await this.persistVFS();
+  }
+
+  /**
+   * Remove a skill by name, unregister it, and remove from VFS.
+   */
+  async removeSkill(name: string): Promise<void> {
+    this.skills.unregister(name);
+    this._fs.delete(`${SKILLS_DIR}/${name}.md`);
+    await this.persistVFS();
+  }
+
+  // ---------------------------------------------------------------------------
   // Thread management
   // ---------------------------------------------------------------------------
 
@@ -168,12 +281,13 @@ export class Agent {
   }
 
   /**
-   * Create a new thread, clear state, and set it as active.
+   * Create a new thread, clear message state, and set it as active.
+   * VFS is shared and not reset on thread change.
    * Returns the new thread ID.
    */
   async newThread(name?: string): Promise<string> {
-    // Persist current thread before switching
-    await this.persist();
+    // Persist current thread messages before switching
+    await this.persistMessages();
 
     const id = crypto.randomUUID().slice(0, 8);
     const now = Date.now();
@@ -187,15 +301,16 @@ export class Agent {
     this.storage.setActiveThreadId(id);
     this._activeThreadId = id;
 
-    // Reset state
-    this.resetState();
-    await this.persist();
+    // Reset messages only (VFS is shared)
+    this.initFreshMessages();
+    await this.persistMessages();
 
     return id;
   }
 
   /**
-   * Switch to an existing thread, loading its state from storage.
+   * Switch to an existing thread, loading its messages from storage.
+   * VFS is shared and not affected by thread switching.
    */
   async switchThread(threadId: string): Promise<void> {
     if (threadId === this._activeThreadId) return;
@@ -205,14 +320,11 @@ export class Agent {
       throw new Error(`Thread not found: ${threadId}`);
     }
 
-    // Persist current thread before switching
-    await this.persist();
+    // Persist current thread messages before switching
+    await this.persistMessages();
 
-    // Load new thread state
-    const [messages, fsData] = await Promise.all([
-      this.storage.getMessages(threadId),
-      this.storage.getFS(threadId),
-    ]);
+    // Load new thread messages
+    const messages = await this.storage.getMessages(threadId);
 
     this.storage.setActiveThreadId(threadId);
     this._activeThreadId = threadId;
@@ -223,13 +335,6 @@ export class Agent {
     } else {
       this.initFreshMessages();
     }
-
-    if (Object.keys(fsData).length > 0) {
-      this._fs = VirtualFS.fromJSON(fsData);
-    } else {
-      this._fs = new VirtualFS();
-    }
-    this.builtinTools = createTools(this._fs);
   }
 
   /** Delete a thread. If it's the active thread, creates a new one. */
@@ -256,20 +361,9 @@ export class Agent {
   // Persistence
   // ---------------------------------------------------------------------------
 
-  /** Persist the current thread's state to storage */
+  /** Persist the current thread's messages to storage */
   async persist(): Promise<void> {
-    if (!this._activeThreadId) return;
-
-    const meta = this.storage.getThread(this._activeThreadId);
-    if (meta) {
-      meta.updatedAt = Date.now();
-      this.storage.saveThread(meta);
-    }
-
-    await Promise.all([
-      this.storage.saveMessages(this._activeThreadId, [...this.messages]),
-      this.storage.saveFS(this._activeThreadId, this._fs.toJSON()),
-    ]);
+    await Promise.all([this.persistMessages(), this.persistVFS()]);
   }
 
   /** Serialize agent state (messages + fs) */
@@ -403,13 +497,6 @@ export class Agent {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
-  /** Build fresh system message + reset FS */
-  private resetState(): void {
-    this.initFreshMessages();
-    this._fs = new VirtualFS();
-    this.builtinTools = createTools(this._fs);
-  }
-
   /** Initialize messages with system prompt */
   private initFreshMessages(): void {
     const basePrompt = this.config.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
@@ -422,29 +509,104 @@ export class Agent {
     this._isFirstUserMessage = true;
   }
 
+  /** Persist only messages for the current thread */
+  private async persistMessages(): Promise<void> {
+    if (!this._activeThreadId) return;
+
+    const meta = this.storage.getThread(this._activeThreadId);
+    if (meta) {
+      meta.updatedAt = Date.now();
+      this.storage.saveThread(meta);
+    }
+
+    await this.storage.saveMessages(this._activeThreadId, [...this.messages]);
+  }
+
+  /** Persist VFS to agent-level storage */
+  private async persistVFS(): Promise<void> {
+    await this.storage.saveVFS(this._fs.toJSON());
+  }
+
+  /**
+   * Async initialization: load VFS from storage, auto-load extensions/skills
+   * from VFS, then load config extensions.
+   */
+  private async initAsync(): Promise<void> {
+    // 1. Load persisted VFS
+    const vfsData = await this.storage.loadVFS();
+    if (Object.keys(vfsData).length > 0) {
+      this._fs = VirtualFS.fromJSON(vfsData);
+      this.builtinTools = createTools(this._fs);
+    }
+
+    // 2. Auto-load extensions from VFS
+    const extensionFiles = this._fs.list(EXTENSIONS_DIR);
+    for (const path of extensionFiles) {
+      if (!path.endsWith(".js")) continue;
+      const source = this._fs.read(path);
+      if (!source) continue;
+
+      // Extract filename (without extension) as the extension name
+      const filename = path.split("/").pop()!.replace(/\.js$/, "");
+
+      try {
+        const fn = new Function("return " + source)() as Extension;
+        if (typeof fn === "function") {
+          const scopedHost: ExtensionHost = {
+            registerTool: (tool: ToolDefinition) => {
+              this.registerTool(tool, filename);
+            },
+            on: (event: "agent_event", handler: (e: AgentEvent) => void) => {
+              return this.on(event, handler);
+            },
+            requestUserInput: (req: UserInputRequest) => {
+              return this.requestUserInput(req);
+            },
+          };
+          await fn(scopedHost);
+        }
+      } catch (e) {
+        console.warn(`[agent] Failed to load extension "${filename}" from VFS:`, e);
+      }
+    }
+
+    // 3. Auto-load skills from VFS
+    const skillFiles = this._fs.list(SKILLS_DIR);
+    for (const path of skillFiles) {
+      if (!path.endsWith(".md")) continue;
+      const content = this._fs.read(path);
+      if (!content) continue;
+
+      try {
+        const skill = parseSkillMarkdown(content);
+        if (skill) {
+          this.skills.register(skill);
+        }
+      } catch (e) {
+        console.warn(`[agent] Failed to load skill from VFS (${path}):`, e);
+      }
+    }
+
+    // 4. Load config extensions (these receive the Agent directly)
+    await this.extensions.load(this.config.extensions ?? [], this);
+  }
+
   /**
    * Restore the active thread from storage, or create a new one.
+   * Only restores messages — VFS is already loaded from agent-level storage.
    */
   private async restoreOrCreateThread(): Promise<void> {
     const activeId = this.storage.getActiveThreadId();
 
     if (activeId && this.storage.getThread(activeId)) {
-      // Load existing thread
-      const [messages, fsData] = await Promise.all([
-        this.storage.getMessages(activeId),
-        this.storage.getFS(activeId),
-      ]);
+      // Load existing thread messages
+      const messages = await this.storage.getMessages(activeId);
 
       this._activeThreadId = activeId;
 
       if (messages.length > 0) {
         this.messages = messages;
         this._isFirstUserMessage = !messages.some((m) => m.role === "user");
-      }
-
-      if (Object.keys(fsData).length > 0) {
-        this._fs = VirtualFS.fromJSON(fsData);
-        this.builtinTools = createTools(this._fs);
       }
     } else {
       // Create fresh thread
@@ -458,7 +620,7 @@ export class Agent {
       });
       this.storage.setActiveThreadId(id);
       this._activeThreadId = id;
-      await this.persist();
+      await this.persistMessages();
     }
   }
 }

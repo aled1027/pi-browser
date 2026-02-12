@@ -1,8 +1,11 @@
 /**
- * Persistence layer for pi-browser threads.
+ * Persistence layer for pi-browser threads and agent-level VFS.
  *
  * Uses IndexedDB for large data (messages, filesystem) and
  * localStorage for small metadata (thread list, active thread).
+ *
+ * VFS is stored per-agent (not per-thread) in its own IndexedDB store.
+ * Threads only persist messages.
  */
 
 import type { Message } from "./types.js";
@@ -43,9 +46,10 @@ function writeThreadList(list: ThreadMeta[]): void {
 // ---------------------------------------------------------------------------
 
 const DB_NAME = "pi-browser";
-const DB_VERSION = 1;
+const DB_VERSION = 2; // bumped for new VFS store
 const STORE_MESSAGES = "messages"; // key: threadId, value: Message[]
-const STORE_FS = "fs"; // key: threadId, value: Record<string,string>
+const STORE_FS = "fs"; // legacy per-thread FS (kept for migration)
+const STORE_AGENT_VFS = "agent-vfs"; // key: "vfs", value: Record<string,string>
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -57,6 +61,9 @@ function openDB(): Promise<IDBDatabase> {
       }
       if (!db.objectStoreNames.contains(STORE_FS)) {
         db.createObjectStore(STORE_FS);
+      }
+      if (!db.objectStoreNames.contains(STORE_AGENT_VFS)) {
+        db.createObjectStore(STORE_AGENT_VFS);
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -128,12 +135,9 @@ export class ThreadStorage {
     const list = readThreadList().filter((t) => t.id !== id);
     writeThreadList(list);
 
-    // Remove IndexedDB data
+    // Remove IndexedDB data (messages only; VFS is agent-level now)
     const db = await this.dbPromise;
-    await Promise.all([
-      idbDelete(db, STORE_MESSAGES, id),
-      idbDelete(db, STORE_FS, id),
-    ]);
+    await idbDelete(db, STORE_MESSAGES, id);
 
     // Clear active if it was this thread
     if (this.getActiveThreadId() === id) {
@@ -167,15 +171,15 @@ export class ThreadStorage {
     return (await idbGet<Message[]>(db, STORE_MESSAGES, threadId)) ?? [];
   }
 
-  // --- Virtual FS (IndexedDB) ---
+  // --- Agent-level VFS (IndexedDB) ---
 
-  async saveFS(threadId: string, files: Record<string, string>): Promise<void> {
+  async saveVFS(files: Record<string, string>): Promise<void> {
     const db = await this.dbPromise;
-    await idbPut(db, STORE_FS, threadId, files);
+    await idbPut(db, STORE_AGENT_VFS, "vfs", files);
   }
 
-  async getFS(threadId: string): Promise<Record<string, string>> {
+  async loadVFS(): Promise<Record<string, string>> {
     const db = await this.dbPromise;
-    return (await idbGet<Record<string, string>>(db, STORE_FS, threadId)) ?? {};
+    return (await idbGet<Record<string, string>>(db, STORE_AGENT_VFS, "vfs")) ?? {};
   }
 }

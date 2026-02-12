@@ -6,14 +6,14 @@ A browser-based AI coding agent framework. The core library provides AI-powered 
 
 ```
 src/core/             ← core framework (no UI dependencies, pure TypeScript)
-  agent.ts            Agent class (main API)
+  agent.ts            Agent class (main API, implements ExtensionHost)
   types.ts            Message, ToolCall, AgentEvent, PromptResult, etc.
-  extensions.ts       Extension system
-  skills.ts           On-demand instruction documents
+  extensions.ts       Extension system (ExtensionHost interface, ExtensionRegistry)
+  skills.ts           On-demand instruction documents + frontmatter parser
   prompt-templates.ts /slash command expansion
   openrouter.ts       OpenRouter streaming client + tool loop
   tools.ts            VirtualFS + built-in filesystem tools
-  storage.ts          Thread persistence (IndexedDB + localStorage)
+  storage.ts          Thread persistence (IndexedDB + localStorage), agent-level VFS
 
 src/core/plugins/     ← built-in extensions, skills, prompt templates
 
@@ -79,23 +79,27 @@ Agent, VirtualFS
 // Types
 AgentConfig, Message, ToolCall, ToolResult, ToolDefinition,
 AgentEvent, PromptResult, PromptCallbacks, ThreadMeta,
-Extension, PiBrowserAPI, UserInputField, UserInputRequest, UserInputResponse,
+Extension, ExtensionHost, PiBrowserAPI (deprecated),
+UserInputField, UserInputRequest, UserInputResponse,
 Skill, PromptTemplate
 
+// Functions
+parseSkillMarkdown, serializeSkillMarkdown
+
 // Built-in plugins
-askUserExtension, codeReviewSkill, litComponentSkill, builtinTemplates
+askUserExtension, codeReviewSkill, litComponentSkill, piBrowserSkill, builtinTemplates
 ```
 
 ---
 
 ## Agent
 
-The `Agent` class is the primary API. It orchestrates messages, tools, extensions, skills, templates, thread management, and persistence.
+The `Agent` class is the primary API. It orchestrates messages, tools, extensions, skills, templates, thread management, and persistence. It also implements `ExtensionHost`, so extensions receive the Agent directly.
 
 ### Construction
 
 ```typescript
-// Recommended — creates agent and restores/creates a thread
+// Recommended — creates agent, loads VFS, auto-loads extensions/skills, restores thread
 const agent = await Agent.create(config);
 
 // Manual — you must call ready() yourself before prompting
@@ -196,6 +200,8 @@ agent.tools: ToolDefinition[]  // All available tools (builtin + extension + rea
 
 ### Filesystem
 
+The VFS is **per-agent** (shared across all threads). Thread switching does not affect VFS state.
+
 ```typescript
 agent.fs: VirtualFS  // Direct access to the virtual filesystem
 ```
@@ -211,9 +217,73 @@ agent.setUserInputHandler(async (request) => {
 });
 ```
 
+### Dynamic extension management
+
+Add or remove extensions **after** the agent is initialized. Dynamic extensions are persisted to VFS and auto-loaded on future startups.
+
+#### `addExtension(source, filename): Promise<void>`
+
+Add an extension from JavaScript source code. The source must be a function expression that accepts an `ExtensionHost` (the agent):
+
+```typescript
+await agent.addExtension(`(agent) => {
+  agent.registerTool({
+    name: "fetch_url",
+    description: "Fetch a URL and return its text content",
+    parameters: {
+      type: "object",
+      properties: { url: { type: "string" } },
+      required: ["url"],
+    },
+    execute: async (args) => {
+      const text = await (await fetch(args.url)).text();
+      return { content: text.slice(0, 5000), isError: false };
+    },
+  });
+}`, "fetch-url");
+```
+
+The extension is:
+1. Evaluated and executed immediately (tools become available right away)
+2. Persisted to `/.pi-browser/extensions/<filename>.js` on the VFS
+3. Auto-loaded on future agent startups
+
+#### `removeExtension(name): Promise<void>`
+
+Remove a previously added extension. Unregisters all its tools and removes it from VFS:
+
+```typescript
+await agent.removeExtension("fetch-url");
+```
+
+### Dynamic skill management
+
+Add or remove skills **after** the agent is initialized. Dynamic skills are persisted to VFS and auto-loaded on future startups.
+
+#### `addSkill(skill): Promise<void>`
+
+```typescript
+await agent.addSkill({
+  name: "api-design",
+  description: "Design RESTful APIs. Use when asked to design or review an API.",
+  content: "# API Design Guidelines\n\n## URL Structure\n- Use nouns for resources...",
+});
+```
+
+The skill is:
+1. Registered immediately (available to the model right away)
+2. Persisted to `/.pi-browser/skills/<name>.md` as markdown with YAML frontmatter
+3. Auto-loaded on future agent startups
+
+#### `removeSkill(name): Promise<void>`
+
+```typescript
+await agent.removeSkill("api-design");
+```
+
 ### Thread management
 
-Threads provide conversation persistence across page reloads using IndexedDB and localStorage.
+Threads provide conversation persistence across page reloads using IndexedDB and localStorage. **Threads only persist messages** — VFS is shared across all threads at the agent level.
 
 | Method | Description |
 |--------|-------------|
@@ -235,7 +305,7 @@ interface ThreadMeta {
 }
 ```
 
-Threads auto-name themselves from the first user message. State (messages + filesystem) is persisted after each completed turn.
+Threads auto-name themselves from the first user message.
 
 ---
 
@@ -288,8 +358,8 @@ interface ToolResult {
 ### Custom tools via extensions
 
 ```typescript
-const myExtension: Extension = (api) => {
-  api.registerTool({
+const myExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "fetch_url",
     description: "Fetch a URL and return its contents",
     parameters: {
@@ -305,20 +375,13 @@ const myExtension: Extension = (api) => {
 };
 ```
 
-### `createTools(fs)` for standalone use
-
-```typescript
-import { VirtualFS } from "pi-browser";
-import { createTools } from "pi-browser";  // if exported
-
-const tools = createTools(new VirtualFS());  // [read, write, edit, list]
-```
-
 ---
 
 ## VirtualFS
 
 In-memory filesystem. Paths are normalized with leading `/` and collapsed `//`.
+
+The VFS is **per-agent** — shared across all threads and persisted independently in its own IndexedDB store. Thread switching does not save/restore VFS.
 
 ```typescript
 const fs = new VirtualFS();
@@ -329,7 +392,7 @@ fs.exists("/src/main.ts");   // true
 fs.list("/src");              // ["/src/main.ts"]
 fs.delete("/src/main.ts");   // true
 
-// Serialization (used internally for thread persistence)
+// Serialization
 const json = fs.toJSON();                // Record<string, string>
 const restored = VirtualFS.fromJSON(json);
 
@@ -345,24 +408,61 @@ agent.fs.write("/data.json", JSON.stringify({ items: [1, 2, 3] }));
 const result = await agent.send("Summarize the data in /data.json");
 ```
 
+### VFS-persisted extensions and skills
+
+Dynamic extensions and skills are stored on the VFS and auto-loaded on startup:
+
+```
+/.pi-browser/
+  extensions/
+    fetch-url.js       ← JavaScript function: (agent) => { ... }
+    my-tool.js
+  skills/
+    api-design.md      ← Markdown with YAML frontmatter
+    css-layout.md
+```
+
 ---
 
 ## Extensions
 
-Extensions are functions that receive a `PiBrowserAPI` and add capabilities. They run once during agent construction.
+Extensions are functions that receive the Agent (which implements `ExtensionHost`) and add capabilities.
+
+### Extension type
 
 ```typescript
-type Extension = (api: PiBrowserAPI) => void | Promise<void>;
+type Extension = (agent: ExtensionHost) => void | Promise<void>;
 ```
 
-### PiBrowserAPI
+### ExtensionHost
+
+The `Agent` class implements `ExtensionHost`:
 
 ```typescript
-interface PiBrowserAPI {
-  registerTool(tool: ToolDefinition): void;
+interface ExtensionHost {
+  registerTool(tool: ToolDefinition, extensionName?: string): void;
   on(event: "agent_event", handler: (e: AgentEvent) => void): () => void;
   requestUserInput(request: UserInputRequest): Promise<UserInputResponse>;
 }
+```
+
+### Config extensions vs dynamic extensions
+
+**Config extensions** are passed in `AgentConfig.extensions` and loaded during initialization:
+
+```typescript
+const agent = await Agent.create({
+  apiKey: "sk-or-...",
+  extensions: [askUserExtension, myExtension],
+});
+```
+
+**Dynamic extensions** are added after initialization and persisted to VFS:
+
+```typescript
+await agent.addExtension(`(agent) => {
+  agent.registerTool({ name: "my_tool", ... });
+}`, "my-tool");
 ```
 
 ### User input from extensions
@@ -370,13 +470,13 @@ interface PiBrowserAPI {
 Extensions can pause execution and ask the user for input via a form:
 
 ```typescript
-const askExtension: Extension = (api) => {
-  api.registerTool({
+const askExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "ask_user",
     description: "Ask the user a question",
     parameters: { /* ... */ },
     execute: async (args) => {
-      const response = await api.requestUserInput({
+      const response = await agent.requestUserInput({
         question: args.question as string,
         fields: [{ name: "answer", label: "Your answer", type: "text", required: true }],
       });
@@ -426,6 +526,8 @@ interface Skill {
 }
 ```
 
+### Config skills
+
 ```typescript
 const agent = await Agent.create({
   apiKey: "sk-or-...",
@@ -439,12 +541,49 @@ const agent = await Agent.create({
 });
 ```
 
+### Dynamic skills
+
+```typescript
+await agent.addSkill({
+  name: "css-layout",
+  description: "CSS layout advice for flexbox, grid, responsive design.",
+  content: "# CSS Layout\n\n## Flexbox\n...\n## Grid\n...",
+});
+
+await agent.removeSkill("css-layout");
+```
+
+### Skill markdown format
+
+Skills persisted to VFS use YAML frontmatter:
+
+```markdown
+---
+name: api-design
+description: Design RESTful APIs. Use when asked to design or review an API.
+---
+# API Design Guidelines
+
+## URL Structure
+- Use nouns for resources...
+```
+
+Use `parseSkillMarkdown()` and `serializeSkillMarkdown()` to convert:
+
+```typescript
+import { parseSkillMarkdown, serializeSkillMarkdown } from "pi-browser";
+
+const skill = parseSkillMarkdown(markdownString);  // Skill | null
+const markdown = serializeSkillMarkdown(skill);     // string
+```
+
 When skills are registered, a `read_skill` tool is automatically added. The model reads the skill content when it encounters a matching task.
 
 ### Built-in skills
 
 - **`codeReviewSkill`** — Code review guidelines
 - **`litComponentSkill`** — Lit web component creation
+- **`piBrowserSkill`** — pi-browser usage guide
 
 ---
 
@@ -506,15 +645,56 @@ Templates are auto-expanded by `send()` and `prompt()` — the model sees the fi
 
 ---
 
+## Persistence
+
+### VFS persistence (per-agent)
+
+The VFS is persisted independently of threads in its own IndexedDB store (`agent-vfs`). This means:
+- Extensions and skills added via `addExtension()` / `addSkill()` survive page reloads
+- VFS state is shared across all threads
+- Thread switching does not save/restore VFS
+
+### Thread persistence (messages only)
+
+Thread state is persisted automatically:
+
+- **Thread metadata** (id, name, timestamps) → `localStorage`
+- **Messages** → `IndexedDB`
+
+Messages are saved after each completed `send()` or `prompt()` turn. On page reload, `Agent.create()` restores the last active thread's messages and the shared VFS.
+
+### Auto-loading on startup
+
+When `Agent.create()` is called:
+1. VFS is loaded from its own IndexedDB store
+2. Extensions in `/.pi-browser/extensions/*.js` are evaluated and executed
+3. Skills in `/.pi-browser/skills/*.md` are parsed (YAML frontmatter) and registered
+4. Config extensions from `AgentConfig.extensions` are loaded
+
+```typescript
+// Thread lifecycle
+const id = await agent.newThread("My project");
+await agent.send("Hello!");
+
+// Later, switch between threads
+const threads = agent.listThreads();
+await agent.switchThread(threads[1].id);
+
+// Delete a thread
+await agent.deleteThread(id);
+```
+
+---
+
 ## Full example
 
 ```typescript
 import { Agent, askUserExtension, codeReviewSkill, builtinTemplates } from "pi-browser";
 import type { Extension, Skill, PromptTemplate } from "pi-browser";
 
-// Custom extension
-const timestampExtension: Extension = (api) => {
-  api.registerTool({
+// Custom extension (config-time)
+const timestampExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "timestamp",
     description: "Get the current ISO timestamp",
     parameters: { type: "object", properties: {} },
@@ -551,33 +731,27 @@ agent.fs.write("/greeting.txt", "Hello, world!");
 const result = await agent.send("Read /greeting.txt and tell me what it says");
 console.log(result.text);
 
-// With streaming
-const result2 = await agent.send("/style .card responsive with dark theme", {
-  onText: (_delta, full) => { document.getElementById("output")!.textContent = full; },
-  onToolCallEnd: (tc) => { console.log(`[tool] ${tc.name} → ${tc.result?.content}`); },
+// Dynamic extension (persisted, auto-loaded next time)
+await agent.addExtension(`(agent) => {
+  agent.registerTool({
+    name: "fetch_url",
+    description: "Fetch a URL",
+    parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
+    execute: async (args) => {
+      const text = await (await fetch(args.url)).text();
+      return { content: text.slice(0, 5000), isError: false };
+    },
+  });
+}`, "fetch-url");
+
+// Dynamic skill (persisted, auto-loaded next time)
+await agent.addSkill({
+  name: "api-design",
+  description: "Design RESTful APIs",
+  content: "# API Design\n\n- Use nouns for resources...",
 });
-```
 
----
-
-## Persistence
-
-Thread state is persisted automatically:
-
-- **Thread metadata** (id, name, timestamps) → `localStorage`
-- **Messages and filesystem** → `IndexedDB`
-
-State is saved after each completed `send()` or `prompt()` turn. On page reload, `Agent.create()` restores the last active thread.
-
-```typescript
-// Thread lifecycle
-const id = await agent.newThread("My project");
-await agent.send("Hello!");
-
-// Later, switch between threads
-const threads = agent.listThreads();
-await agent.switchThread(threads[1].id);
-
-// Delete a thread
-await agent.deleteThread(id);
+// Remove them later
+await agent.removeExtension("fetch-url");
+await agent.removeSkill("api-design");
 ```

@@ -14,8 +14,8 @@
 
 import type { Extension } from "../../extensions.js";
 
-export const askUserExtension: Extension = (api) => {
-  api.registerTool({
+export const askUserExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "ask_user",
     description: `Ask the user a question and wait for their answer via a browser form.
 Use this whenever you need clarification, a decision, or any input from the user.
@@ -97,7 +97,7 @@ If no fields are specified, returns { "answer": "<user's text>" }.`,
       }> | undefined;
 
       try {
-        const response = await api.requestUserInput({
+        const response = await agent.requestUserInput({
           question,
           description,
           fields: fields ?? [

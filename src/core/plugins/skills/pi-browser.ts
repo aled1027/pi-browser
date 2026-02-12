@@ -12,14 +12,14 @@ pi-browser is a browser-based AI coding agent framework. It provides AI-powered 
 
 \`\`\`
 src/core/
-  agent.ts            Agent class (main API)
+  agent.ts            Agent class (main API, implements ExtensionHost)
   types.ts            Message, ToolCall, AgentEvent, PromptResult, etc.
-  extensions.ts       Extension system (PiBrowserAPI)
-  skills.ts           On-demand instruction documents
+  extensions.ts       Extension system (ExtensionHost interface, ExtensionRegistry)
+  skills.ts           On-demand instruction documents + frontmatter parser
   prompt-templates.ts /slash command expansion
   openrouter.ts       OpenRouter streaming client + tool loop
   tools.ts            VirtualFS + built-in filesystem tools
-  storage.ts          Thread persistence (IndexedDB + localStorage)
+  storage.ts          Thread persistence (IndexedDB + localStorage), agent-level VFS
 
 src/core/plugins/
   extensions/         Built-in extensions (e.g. ask-user)
@@ -30,32 +30,32 @@ src/core/plugins/
 ## Core Concepts
 
 ### Agent
-The \`Agent\` class is the primary API. Create one with \`Agent.create({ apiKey })\`. Use \`agent.send(text)\` to send messages and get responses. The agent manages messages, tools, extensions, skills, templates, threads, and persistence.
+The \`Agent\` class is the primary API. Create one with \`Agent.create({ apiKey })\`. Use \`agent.send(text)\` to send messages and get responses. The agent manages messages, tools, extensions, skills, templates, threads, and persistence. It implements \`ExtensionHost\`, so extensions receive the agent directly.
 
 ### VirtualFS
-An in-memory filesystem. The agent's built-in tools (read, write, edit, list) operate on it. Access via \`agent.fs\`.
+An in-memory filesystem shared across all threads (per-agent). The agent's built-in tools (read, write, edit, list) operate on it. Access via \`agent.fs\`. VFS is persisted independently of threads. Dynamic extensions and skills are stored in \`/.pi-browser/\` on VFS and auto-loaded on startup.
 
 ### Tools
 Built-in tools: \`read\`, \`write\`, \`edit\`, \`list\` — all operate on VirtualFS. Extensions can register additional tools. Skills add a \`read_skill\` tool automatically.
 
 ### Threads
-Conversations are persisted as threads using IndexedDB + localStorage. Threads auto-save after each turn and restore on page reload.
+Conversations are persisted as threads using IndexedDB + localStorage. Threads only persist messages (not VFS). Threads auto-save after each turn and restore on page reload.
 
 ---
 
 ## How to Write an Extension
 
-Extensions are functions that receive a \`PiBrowserAPI\` and use it to register tools, listen to events, and request user input. They run once during agent initialization.
+Extensions are functions that receive the Agent (which implements \`ExtensionHost\`) and use it to register tools, listen to events, and request user input. They run once during agent initialization.
 
 ### Extension signature
 
 \`\`\`typescript
 import type { Extension } from "pi-browser";
 
-export const myExtension: Extension = (api) => {
-  // api.registerTool(...)    — register a tool the model can call
-  // api.on("agent_event", handler) — subscribe to events
-  // api.requestUserInput(request) — ask the user for input (from within a tool)
+export const myExtension: Extension = (agent) => {
+  // agent.registerTool(...)    — register a tool the model can call
+  // agent.on("agent_event", handler) — subscribe to events
+  // agent.requestUserInput(request) — ask the user for input (from within a tool)
 };
 \`\`\`
 
@@ -64,8 +64,8 @@ export const myExtension: Extension = (api) => {
 \`\`\`typescript
 import type { Extension } from "pi-browser";
 
-export const fetchExtension: Extension = (api) => {
-  api.registerTool({
+export const fetchExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "fetch_url",
     description: "Fetch a URL and return its text content (first 5000 chars)",
     parameters: {
@@ -91,8 +91,8 @@ export const fetchExtension: Extension = (api) => {
 ### Requesting user input from a tool
 
 \`\`\`typescript
-export const confirmExtension: Extension = (api) => {
-  api.registerTool({
+export const confirmExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "confirm_action",
     description: "Ask the user to confirm before proceeding",
     parameters: {
@@ -103,7 +103,7 @@ export const confirmExtension: Extension = (api) => {
       required: ["action"],
     },
     execute: async (args) => {
-      const response = await api.requestUserInput({
+      const response = await agent.requestUserInput({
         question: \`Confirm: \${args.action}\`,
         fields: [{ name: "ok", label: "Proceed?", type: "confirm", required: true }],
       });
@@ -116,8 +116,8 @@ export const confirmExtension: Extension = (api) => {
 ### Listening to agent events
 
 \`\`\`typescript
-export const loggerExtension: Extension = (api) => {
-  api.on("agent_event", (event) => {
+export const loggerExtension: Extension = (agent) => {
+  agent.on("agent_event", (event) => {
     if (event.type === "tool_call_end") {
       console.log(\`Tool \${event.toolCall.name} finished\`);
     }
@@ -125,9 +125,9 @@ export const loggerExtension: Extension = (api) => {
 };
 \`\`\`
 
-### Adding an extension to the agent
+### Adding extensions to the agent
 
-Pass extensions in the config when creating the agent:
+#### Config-time (at creation)
 
 \`\`\`typescript
 import { Agent, askUserExtension } from "pi-browser";
@@ -136,6 +136,25 @@ const agent = await Agent.create({
   apiKey: "sk-or-...",
   extensions: [askUserExtension, fetchExtension, loggerExtension],
 });
+\`\`\`
+
+#### Dynamic (post-initialization, persisted to VFS)
+
+\`\`\`typescript
+await agent.addExtension(\`(agent) => {
+  agent.registerTool({
+    name: "fetch_url",
+    description: "Fetch a URL",
+    parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
+    execute: async (args) => {
+      const text = await (await fetch(args.url)).text();
+      return { content: text.slice(0, 5000), isError: false };
+    },
+  });
+}\`, "fetch-url");
+
+// Remove later
+await agent.removeExtension("fetch-url");
 \`\`\`
 
 ### ToolDefinition interface
@@ -154,11 +173,11 @@ interface ToolResult {
 }
 \`\`\`
 
-### PiBrowserAPI interface
+### ExtensionHost interface
 
 \`\`\`typescript
-interface PiBrowserAPI {
-  registerTool(tool: ToolDefinition): void;
+interface ExtensionHost {
+  registerTool(tool: ToolDefinition, extensionName?: string): void;
   on(event: "agent_event", handler: (e: AgentEvent) => void): () => void;
   requestUserInput(request: UserInputRequest): Promise<UserInputResponse>;
 }
@@ -207,7 +226,9 @@ export const apiDesignSkill: Skill = {
 };
 \`\`\`
 
-### Adding a skill to the agent
+### Adding skills
+
+#### Config-time
 
 \`\`\`typescript
 import { Agent, codeReviewSkill } from "pi-browser";
@@ -216,6 +237,34 @@ const agent = await Agent.create({
   apiKey: "sk-or-...",
   skills: [codeReviewSkill, apiDesignSkill],
 });
+\`\`\`
+
+#### Dynamic (post-initialization, persisted to VFS)
+
+\`\`\`typescript
+await agent.addSkill({
+  name: "css-layout",
+  description: "CSS layout advice for flexbox, grid, responsive design.",
+  content: "# CSS Layout\\n\\n## Flexbox\\n...\\n## Grid\\n...",
+});
+
+// Remove later
+await agent.removeSkill("css-layout");
+\`\`\`
+
+### Skill markdown format (VFS persistence)
+
+Skills persisted to VFS use YAML frontmatter:
+
+\`\`\`markdown
+---
+name: api-design
+description: Design RESTful APIs. Use when asked to design or review an API.
+---
+# API Design Guidelines
+
+## URL Structure
+- Use nouns for resources...
 \`\`\`
 
 ### Adding a built-in skill

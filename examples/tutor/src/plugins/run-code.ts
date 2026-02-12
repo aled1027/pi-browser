@@ -7,8 +7,8 @@
 
 import type { Extension } from "pi-browser";
 
-export const runCodeExtension: Extension = (api) => {
-  api.registerTool({
+export const runCodeExtension: Extension = (agent) => {
+  agent.registerTool({
     name: "run_code",
     description: `Execute JavaScript code in a sandboxed browser iframe and return the console output.
 Use this to test student solutions or demonstrate code behavior.

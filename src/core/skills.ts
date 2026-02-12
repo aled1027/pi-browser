@@ -22,6 +22,50 @@ export interface Skill {
   content: string;
 }
 
+// ─── Frontmatter parsing ────────────────────────────────────────────
+
+/**
+ * Parse a skill markdown file with YAML frontmatter.
+ *
+ * Expected format:
+ * ```markdown
+ * ---
+ * name: my-skill
+ * description: Does things. Use when asked to do things.
+ * ---
+ * # Skill content here
+ * ```
+ *
+ * Returns null if the frontmatter is missing or invalid.
+ */
+export function parseSkillMarkdown(markdown: string): Skill | null {
+  const match = markdown.match(/^---\s*\n([\s\S]*?)\n---\s*\n([\s\S]*)$/);
+  if (!match) return null;
+
+  const frontmatter = match[1];
+  const content = match[2].trim();
+
+  // Simple YAML-like parsing for name and description
+  const nameMatch = frontmatter.match(/^name:\s*(.+)$/m);
+  const descMatch = frontmatter.match(/^description:\s*(.+)$/m);
+
+  if (!nameMatch || !descMatch) return null;
+
+  const name = nameMatch[1].trim();
+  const description = descMatch[1].trim();
+
+  if (!name || !description || !content) return null;
+
+  return { name, description, content };
+}
+
+/**
+ * Serialize a Skill to markdown with YAML frontmatter.
+ */
+export function serializeSkillMarkdown(skill: Skill): string {
+  return `---\nname: ${skill.name}\ndescription: ${skill.description}\n---\n${skill.content}\n`;
+}
+
 // ─── Skill registry ─────────────────────────────────────────────────
 
 export class SkillRegistry {
@@ -45,6 +89,11 @@ export class SkillRegistry {
     for (const skill of skills) {
       this.register(skill);
     }
+  }
+
+  /** Unregister a skill by name. Returns true if it existed. */
+  unregister(name: string): boolean {
+    return this.skills.delete(name);
   }
 
   /** Get a skill by name */
