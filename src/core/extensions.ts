@@ -59,15 +59,6 @@ export interface ExtensionHost {
  */
 export type Extension = (agent: ExtensionHost) => void | Promise<void>;
 
-// ─── Legacy PiBrowserAPI (deprecated, kept for compatibility) ───────
-
-/** @deprecated Use Extension = (agent: ExtensionHost) => void instead */
-export interface PiBrowserAPI {
-  registerTool(tool: ToolDefinition): void;
-  on(event: "agent_event", handler: (e: AgentEvent) => void): () => void;
-  requestUserInput(request: UserInputRequest): Promise<UserInputResponse>;
-}
-
 // ─── Extension registry ─────────────────────────────────────────────
 
 export class ExtensionRegistry {

@@ -82,6 +82,7 @@ If no fields are specified, returns { "answer": "<user's text>" }.`,
         },
       },
       required: ["question"],
+      additionalProperties: false,
     },
     execute: async (args) => {
       const question = args.question as string;

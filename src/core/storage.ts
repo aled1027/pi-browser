@@ -48,7 +48,10 @@ function writeThreadList(list: ThreadMeta[]): void {
 const DB_NAME = "pi-browser";
 const DB_VERSION = 2; // bumped for new VFS store
 const STORE_MESSAGES = "messages"; // key: threadId, value: Message[]
-const STORE_FS = "fs"; // legacy per-thread FS (kept for migration)
+/** @deprecated Legacy per-thread FS store from DB_VERSION 1. Kept so the
+ *  upgrade path doesn't lose the object store, and clearAll() can wipe it.
+ *  No code writes to this store — it can be removed in a future DB version bump. */
+const STORE_FS = "fs";
 const STORE_AGENT_VFS = "agent-vfs"; // key: "vfs", value: Record<string,string>
 
 function openDB(): Promise<IDBDatabase> {
@@ -112,10 +115,20 @@ function idbClear(db: IDBDatabase, store: string): Promise<void> {
 // ---------------------------------------------------------------------------
 
 export class ThreadStorage {
-  private dbPromise: Promise<IDBDatabase>;
+  private dbPromise: Promise<IDBDatabase | null>;
 
   constructor() {
-    this.dbPromise = openDB();
+    this.dbPromise = openDB().catch((e) => {
+      console.warn(
+        "[storage] IndexedDB unavailable, falling back to in-memory storage:",
+        e
+      );
+      return null;
+    });
+  }
+
+  private async getDB(): Promise<IDBDatabase | null> {
+    return this.dbPromise;
   }
 
   // --- Thread metadata (localStorage) ---
@@ -145,8 +158,10 @@ export class ThreadStorage {
     writeThreadList(list);
 
     // Remove IndexedDB data (messages only; VFS is agent-level now)
-    const db = await this.dbPromise;
-    await idbDelete(db, STORE_MESSAGES, id);
+    const db = await this.getDB();
+    if (db) {
+      await idbDelete(db, STORE_MESSAGES, id);
+    }
 
     // Clear active if it was this thread
     if (this.getActiveThreadId() === id) {
@@ -171,24 +186,30 @@ export class ThreadStorage {
   // --- Messages (IndexedDB) ---
 
   async saveMessages(threadId: string, messages: Message[]): Promise<void> {
-    const db = await this.dbPromise;
-    await idbPut(db, STORE_MESSAGES, threadId, messages);
+    const db = await this.getDB();
+    if (db) {
+      await idbPut(db, STORE_MESSAGES, threadId, messages);
+    }
   }
 
   async getMessages(threadId: string): Promise<Message[]> {
-    const db = await this.dbPromise;
+    const db = await this.getDB();
+    if (!db) return [];
     return (await idbGet<Message[]>(db, STORE_MESSAGES, threadId)) ?? [];
   }
 
   // --- Agent-level VFS (IndexedDB) ---
 
   async saveVFS(files: Record<string, string>): Promise<void> {
-    const db = await this.dbPromise;
-    await idbPut(db, STORE_AGENT_VFS, "vfs", files);
+    const db = await this.getDB();
+    if (db) {
+      await idbPut(db, STORE_AGENT_VFS, "vfs", files);
+    }
   }
 
   async loadVFS(): Promise<Record<string, string>> {
-    const db = await this.dbPromise;
+    const db = await this.getDB();
+    if (!db) return {};
     return (await idbGet<Record<string, string>>(db, STORE_AGENT_VFS, "vfs")) ?? {};
   }
 
@@ -202,12 +223,14 @@ export class ThreadStorage {
     localStorage.removeItem(LS_THREAD_LIST);
     localStorage.removeItem(LS_ACTIVE_THREAD);
 
-    // Clear all IndexedDB stores
-    const db = await this.dbPromise;
-    await Promise.all([
-      idbClear(db, STORE_MESSAGES),
-      idbClear(db, STORE_FS),
-      idbClear(db, STORE_AGENT_VFS),
-    ]);
+    // Clear all IndexedDB stores (if available)
+    const db = await this.getDB();
+    if (db) {
+      await Promise.all([
+        idbClear(db, STORE_MESSAGES),
+        idbClear(db, STORE_FS), // legacy store, kept for migration cleanup
+        idbClear(db, STORE_AGENT_VFS),
+      ]);
+    }
   }
 }

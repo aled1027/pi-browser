@@ -32,6 +32,8 @@ export interface AgentConfig {
   extensions?: Extension[];
   skills?: Skill[];
   promptTemplates?: PromptTemplate[];
+  /** Per-request timeout in milliseconds for OpenRouter API calls. Default: 120000 (2 minutes). */
+  timeout?: number;
 }
 
 const PI_BROWSER_DIR = "/.pi-browser";
@@ -94,6 +96,7 @@ export class PromptStream implements AsyncIterable<AgentEvent>, PromiseLike<Prom
   private _result: PromptResult | null = null;
   private _promise: Promise<PromptResult> | null = null;
   private _generator: AsyncGenerator<AgentEvent>;
+  private _consumed = false;
 
   constructor(generator: AsyncGenerator<AgentEvent>) {
     this._generator = generator;
@@ -109,6 +112,11 @@ export class PromptStream implements AsyncIterable<AgentEvent>, PromiseLike<Prom
 
   /** Async-iterate over events for streaming. */
   async *[Symbol.asyncIterator](): AsyncGenerator<AgentEvent> {
+    if (this._consumed) {
+      return;
+    }
+    this._consumed = true;
+
     let fullText = "";
     const toolCalls: ToolCall[] = [];
 
@@ -141,7 +149,11 @@ export class PromptStream implements AsyncIterable<AgentEvent>, PromiseLike<Prom
     onrejected?: ((reason: unknown) => TResult2 | PromiseLike<TResult2>) | null,
   ): Promise<TResult1 | TResult2> {
     if (!this._promise) {
-      this._promise = this.consume();
+      // Attach a no-op catch to prevent unhandled rejection warnings
+      // when the caller only uses iteration instead of .then()
+      const p = this.consume();
+      p.catch(() => {});
+      this._promise = p;
     }
     return this._promise.then(onfulfilled, onrejected);
   }
@@ -516,6 +528,9 @@ export class Agent implements ExtensionHost {
   private async *runPrompt(text: string): AsyncGenerator<AgentEvent> {
     await this._ready;
 
+    // Rebuild system prompt so it reflects any dynamically added skills
+    this.rebuildSystemPrompt();
+
     // Try prompt template expansion
     const expanded = this.promptTemplates.expand(text);
     const finalText = expanded ?? text;
@@ -539,7 +554,7 @@ export class Agent implements ExtensionHost {
       for await (const event of runAgent(
         this.messages,
         this.tools,
-        { apiKey: this.config.apiKey, model: this.config.model },
+        { apiKey: this.config.apiKey, model: this.config.model, timeout: this.config.timeout },
         this.abortController.signal
       )) {
         if (event.type === "text_delta") {
@@ -577,16 +592,28 @@ export class Agent implements ExtensionHost {
   // Internal helpers
   // ---------------------------------------------------------------------------
 
-  /** Initialize messages with system prompt */
-  private initFreshMessages(): void {
+  /** Build the full system prompt string from base prompt + current skills */
+  private buildSystemPrompt(): string {
     const basePrompt = this.config.systemPrompt ?? DEFAULT_SYSTEM_PROMPT;
     const skillFragment = this.skills.systemPromptFragment();
-    const systemPrompt = skillFragment
-      ? basePrompt + "\n" + skillFragment
-      : basePrompt;
+    return skillFragment ? basePrompt + "\n" + skillFragment : basePrompt;
+  }
 
-    this.messages = [{ role: "system", content: systemPrompt }];
+  /** Initialize messages with system prompt */
+  private initFreshMessages(): void {
+    this.messages = [{ role: "system", content: this.buildSystemPrompt() }];
     this._isFirstUserMessage = true;
+  }
+
+  /**
+   * Update the system message in the current conversation to reflect
+   * any skills added/removed since the thread was created.
+   */
+  private rebuildSystemPrompt(): void {
+    const newPrompt = this.buildSystemPrompt();
+    if (this.messages.length > 0 && this.messages[0].role === "system") {
+      this.messages[0] = { role: "system", content: newPrompt };
+    }
   }
 
   /** Persist only messages for the current thread */

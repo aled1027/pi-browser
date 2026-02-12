@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect } from "vitest";
 import { ExtensionRegistry } from "../extensions.js";
 import type { Extension, ExtensionHost } from "../extensions.js";
 import type { ToolDefinition, AgentEvent } from "../types.js";
@@ -92,7 +92,7 @@ describe("ExtensionRegistry", () => {
 
     it("should delegate to the registered handler", async () => {
       const reg = new ExtensionRegistry();
-      reg.setUserInputHandler(async (req) => ({ answer: "42" }));
+      reg.setUserInputHandler(async (_req) => ({ answer: "42" }));
 
       const result = await reg.requestUserInput({ question: "Answer?" });
       expect(result).toEqual({ answer: "42" });
@@ -108,7 +108,7 @@ describe("ExtensionRegistry", () => {
         calls.push("ext1");
         host.registerTool(makeTool("from-ext1"));
       };
-      const ext2: Extension = async (host) => {
+      const ext2: Extension = async (_host) => {
         calls.push("ext2");
       };
 

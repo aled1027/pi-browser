@@ -148,6 +148,7 @@ ${entries}
           },
         },
         required: ["name"],
+        additionalProperties: false,
       },
       execute: async (args): Promise<ToolResult> => {
         const name = args.name as string;

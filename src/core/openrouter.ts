@@ -13,7 +13,11 @@ const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 interface OpenRouterOptions {
   apiKey: string;
   model?: string;
+  /** Per-request timeout in milliseconds. Default: 120000 (2 minutes). */
+  timeout?: number;
 }
+
+const DEFAULT_TIMEOUT = 120_000;
 
 /** Convert our ToolDefinition[] to OpenAI function-calling format */
 function toolsToOpenAI(tools: ToolDefinition[]) {
@@ -40,6 +44,7 @@ export async function* runAgent(
   signal?: AbortSignal
 ): AsyncGenerator<AgentEvent> {
   const model = options.model ?? DEFAULT_MODEL;
+  const timeout = options.timeout ?? DEFAULT_TIMEOUT;
 
   // Build OpenAI-format messages
   const openaiMessages = messages.map((m) => ({
@@ -47,24 +52,41 @@ export async function* runAgent(
     content: m.content,
   }));
 
+  const referer =
+    typeof window !== "undefined" && window.location
+      ? window.location.origin
+      : "https://pi-browser";
+
   // Tool loop: keep going until the model responds with just text
   while (true) {
-    const response = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${options.apiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": window.location.origin,
-        "X-Title": "pi-browser",
-      },
-      body: JSON.stringify({
-        model,
-        messages: openaiMessages,
-        tools: tools.length > 0 ? toolsToOpenAI(tools) : undefined,
-        stream: true,
-      }),
-      signal,
-    });
+    // Combine caller signal with a per-request timeout
+    const timeoutController = new AbortController();
+    const timeoutId = setTimeout(() => timeoutController.abort(), timeout);
+    const combinedSignal = signal
+      ? AbortSignal.any([signal, timeoutController.signal])
+      : timeoutController.signal;
+
+    let response: Response;
+    try {
+      response = await fetch(OPENROUTER_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${options.apiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": referer,
+          "X-Title": "pi-browser",
+        },
+        body: JSON.stringify({
+          model,
+          messages: openaiMessages,
+          tools: tools.length > 0 ? toolsToOpenAI(tools) : undefined,
+          stream: true,
+        }),
+        signal: combinedSignal,
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       const body = await response.text();
@@ -179,11 +201,19 @@ export async function* runAgent(
     }
 
     // Build the assistant message with tool_calls
-    const assistantToolCalls = [...pendingToolCalls.values()].map((tc) => ({
-      id: tc.id,
-      name: tc.name,
-      arguments: JSON.parse(tc.argsJson || "{}") as Record<string, unknown>,
-    }));
+    const assistantToolCalls = [...pendingToolCalls.values()].map((tc) => {
+      let parsedArgs: Record<string, unknown> = {};
+      try {
+        parsedArgs = JSON.parse(tc.argsJson || "{}");
+      } catch {
+        // If args don't parse, use empty object
+      }
+      return {
+        id: tc.id,
+        name: tc.name,
+        arguments: parsedArgs,
+      };
+    });
 
     const assistantMsg = {
       role: "assistant" as const,

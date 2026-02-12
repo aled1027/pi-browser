@@ -14,7 +14,6 @@ export type {
 export type {
   Extension,
   ExtensionHost,
-  PiBrowserAPI,
   UserInputField,
   UserInputRequest,
   UserInputResponse,

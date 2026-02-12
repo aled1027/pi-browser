@@ -40,9 +40,7 @@ export class VirtualFS {
     // Ensure the prefix ends with "/" for directory matching,
     // so that list("/src") doesn't match "/srclib/foo.ts".
     const dirPrefix = norm === "/" ? "/" : norm.endsWith("/") ? norm : norm + "/";
-    return [...this.files.keys()].filter(
-      (k) => k === norm || k.startsWith(dirPrefix)
-    );
+    return [...this.files.keys()].filter((k) => k.startsWith(dirPrefix));
   }
 
   exists(path: string): boolean {
@@ -100,6 +98,7 @@ function readTool(fs: VirtualFS): ToolDefinition {
         path: { type: "string", description: "Path to the file to read" },
       },
       required: ["path"],
+      additionalProperties: false,
     },
     execute: async (args) => {
       const path = args.path as string;
@@ -124,6 +123,7 @@ function writeTool(fs: VirtualFS): ToolDefinition {
         content: { type: "string", description: "Content to write" },
       },
       required: ["path", "content"],
+      additionalProperties: false,
     },
     execute: async (args) => {
       const path = args.path as string;
@@ -153,6 +153,7 @@ function editTool(fs: VirtualFS): ToolDefinition {
         },
       },
       required: ["path", "oldText", "newText"],
+      additionalProperties: false,
     },
     execute: async (args) => {
       const path = args.path as string;
@@ -183,6 +184,7 @@ function listTool(fs: VirtualFS): ToolDefinition {
           description: "Directory prefix to list (default: /)",
         },
       },
+      additionalProperties: false,
     },
     execute: async (args) => {
       const prefix = (args.prefix as string) ?? "/";

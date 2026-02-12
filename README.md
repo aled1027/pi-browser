@@ -7,6 +7,7 @@ Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/
 ## TODO:
 
 - Later: sync state or export. export would be download a zip and maybe could
+- Add CSP for security
 
 ## Quick start
 
