@@ -37,8 +37,11 @@ export class VirtualFS {
 
   list(prefix = "/"): string[] {
     const norm = this.normalize(prefix);
+    // Ensure the prefix ends with "/" for directory matching,
+    // so that list("/src") doesn't match "/srclib/foo.ts".
+    const dirPrefix = norm === "/" ? "/" : norm.endsWith("/") ? norm : norm + "/";
     return [...this.files.keys()].filter(
-      (k) => k === norm || k.startsWith(norm.endsWith("/") ? norm : norm + "/")
+      (k) => k === norm || k.startsWith(dirPrefix)
     );
   }
 
@@ -108,7 +111,7 @@ function editTool(fs: VirtualFS): ToolDefinition {
   return {
     name: "edit",
     description:
-      "Edit a file by replacing exact text. The oldText must match exactly.",
+      "Edit a file by replacing exact text. The oldText must match exactly. Only the first occurrence is replaced.",
     parameters: {
       type: "object",
       properties: {

@@ -1,9 +1,11 @@
 /** A message in the conversation */
 export interface Message {
-  role: "user" | "assistant" | "system";
+  role: "user" | "assistant" | "system" | "tool";
   content: string;
   /** If the assistant used tool calls, they're tracked here */
   toolCalls?: ToolCall[];
+  /** For tool-role messages, the ID of the tool call this is a response to */
+  toolCallId?: string;
 }
 
 /** A tool call requested by the model */
@@ -33,5 +35,6 @@ export type AgentEvent =
   | { type: "text_delta"; delta: string }
   | { type: "tool_call_start"; toolCall: ToolCall }
   | { type: "tool_call_end"; toolCall: ToolCall }
+  | { type: "tool_loop_message"; message: Message }
   | { type: "turn_end" }
   | { type: "error"; error: string };

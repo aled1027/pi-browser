@@ -146,10 +146,15 @@ export class Agent {
     const expanded = this.promptTemplates.expand(text);
     const finalText = expanded ?? text;
 
-    this.messages.push({ role: "user", content: finalText });
+    const userMessage: Message = { role: "user", content: finalText };
+    this.messages.push(userMessage);
     this.abortController = new AbortController();
 
+    // Track how many messages were added during this prompt so we can
+    // roll back if the request fails before producing any response.
+    const messageCountBefore = this.messages.length;
     let fullResponse = "";
+    let hasToolMessages = false;
 
     try {
       for await (const event of runAgent(
@@ -161,15 +166,27 @@ export class Agent {
         if (event.type === "text_delta") {
           fullResponse += event.delta;
         }
+        // Track tool-loop intermediate messages in conversation history
+        if (event.type === "tool_loop_message") {
+          this.messages.push(event.message);
+          hasToolMessages = true;
+        }
         // Broadcast to extension listeners
         this.extensions.emit(event);
         yield event;
       }
 
-      // Append assistant response to history
+      // Append final assistant response to history
       if (fullResponse) {
         this.messages.push({ role: "assistant", content: fullResponse });
       }
+    } catch (e) {
+      // If we got no response at all (no text, no tool messages), roll back
+      // the user message to keep conversation history clean.
+      if (!fullResponse && !hasToolMessages) {
+        this.messages.length = messageCountBefore - 1;
+      }
+      throw e;
     } finally {
       this.abortController = null;
     }

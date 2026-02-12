@@ -7,10 +7,11 @@ A browser-based coding agent framework. The core library (`src/lib/`) provides A
 ```
 src/lib/          ← core framework (no UI dependencies, pure TypeScript)
 src/plugins/      ← extensions, skills, prompt templates (depend on lib)
-src/app/          ← chatbot UI (depends on lib + plugins)
+examples/chat/    ← chatbot example app (depends on lib + plugins)
+examples/tutor/   ← tutor example app (depends on lib + plugins)
 ```
 
-Any application can import from `src/lib/index.ts` and build on top of it.
+Each example is self-contained with its own components. Any application can import from `src/lib/index.ts` and build on top of it.
 
 ## Quick start
 
@@ -329,4 +330,15 @@ src/lib/
   prompt-templates.ts   PromptTemplate, PromptTemplateRegistry
   openrouter.ts         OpenRouter streaming client + tool loop
   tools.ts              VirtualFS + built-in filesystem tools
+
+src/plugins/
+  index.ts              Barrel export for all plugins
+  extensions/           Extension implementations (ask-user, etc.)
+  skills/               Skill definitions (code-review, lit-component)
+  prompt-templates/     Prompt template sets
+  tutor/                Tutor-specific plugins (lessons, templates, run-code)
+
+examples/
+  chat/                 Chat example app (self-contained)
+  tutor/                Tutor example app (self-contained)
 ```

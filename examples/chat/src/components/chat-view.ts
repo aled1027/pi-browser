@@ -11,10 +11,9 @@ interface ChatMessage {
   toolCalls?: ToolCall[];
 }
 
-let nextId = 0;
-
 @customElement("chat-view")
 export class ChatView extends LitElement {
+  private static nextId = 0;
   static styles = css`
     :host {
       height: 100%;
@@ -321,7 +320,7 @@ export class ChatView extends LitElement {
     this.suggestions = [];
     this.messages = [
       ...this.messages,
-      { id: nextId++, role: "user", content: text },
+      { id: ChatView.nextId++, role: "user", content: text },
     ];
     this.streaming = true;
     this.streamText = "";
@@ -366,7 +365,7 @@ export class ChatView extends LitElement {
     this.messages = [
       ...this.messages,
       {
-        id: nextId++,
+        id: ChatView.nextId++,
         role: "assistant",
         content: fullText,
         toolCalls: toolCalls.length > 0 ? toolCalls : undefined,

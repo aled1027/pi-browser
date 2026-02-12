@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
 import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse } from "../../../../src/lib/index.js";
-import "../../../chat/src/components/user-input-form.js";
+import "./user-input-form.js";
 import "./code-editor.js";
 import "./output-panel.js";
 import "./lesson-picker.js";

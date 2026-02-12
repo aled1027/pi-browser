@@ -98,8 +98,8 @@ export class ExtensionRegistry {
 
   /** Load an array of extensions */
   async load(extensions: Extension[]): Promise<void> {
-    const api = this.createAPI();
     for (const ext of extensions) {
+      const api = this.createAPI();
       await ext(api);
     }
   }

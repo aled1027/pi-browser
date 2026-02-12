@@ -1,9 +1,9 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { Agent } from "../../../../src/lib/index.js";
-import { tutorTemplates } from "../../../../src/plugins/tutor/index.js";
+import { tutorTemplates, runCodeExtension } from "../../../../src/plugins/tutor/index.js";
 import { askUserExtension } from "../../../../src/plugins/extensions/ask-user.js";
-import "../../../chat/src/components/api-key-screen.js";
+import "./api-key-screen.js";
 import "./tutor-view.js";
 
 const TUTOR_SYSTEM_PROMPT = `You are π tutor, a friendly and patient tutor running in the browser. You can teach any subject the student asks about.
@@ -101,7 +101,7 @@ export class TutorRoot extends LitElement {
     this.agent = new Agent({
       apiKey: key,
       systemPrompt: TUTOR_SYSTEM_PROMPT,
-      extensions: [askUserExtension],
+      extensions: [askUserExtension, runCodeExtension],
       promptTemplates: tutorTemplates,
     });
     this.started = true;

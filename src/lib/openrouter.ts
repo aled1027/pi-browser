@@ -178,7 +178,20 @@ export async function* runAgent(
       });
     }
 
-    // Append assistant message with tool_calls + tool results, then loop
+    // Build the assistant message with tool_calls
+    const assistantToolCalls = [...pendingToolCalls.values()].map((tc) => ({
+      id: tc.id,
+      name: tc.name,
+      arguments: JSON.parse(tc.argsJson || "{}") as Record<string, unknown>,
+    }));
+
+    const assistantMsg = {
+      role: "assistant" as const,
+      content: fullContent || "",
+      toolCalls: assistantToolCalls,
+    };
+    yield { type: "tool_loop_message", message: assistantMsg };
+
     openaiMessages.push({
       role: "assistant",
       content: fullContent || null,
@@ -190,6 +203,12 @@ export async function* runAgent(
     } as any);
 
     for (const tr of toolResults) {
+      const toolMsg = {
+        role: "tool" as const,
+        content: tr.content,
+        toolCallId: tr.tool_call_id,
+      };
+      yield { type: "tool_loop_message", message: toolMsg };
       openaiMessages.push(tr as any);
     }
   }
