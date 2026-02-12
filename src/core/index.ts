@@ -31,5 +31,6 @@ export {
   askUserExtension,
   codeReviewSkill,
   litComponentSkill,
+  piBrowserSkill,
   builtinTemplates,
 } from "./plugins/index.js";
