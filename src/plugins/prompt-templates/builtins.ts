@@ -1,4 +1,4 @@
-import type { PromptTemplate } from "../../lib/index.js";
+import type { PromptTemplate } from "$core";
 
 export const builtinTemplates: PromptTemplate[] = [
   {

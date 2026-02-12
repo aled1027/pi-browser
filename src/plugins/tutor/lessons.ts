@@ -1,4 +1,4 @@
-import type { Skill } from "../../lib/index.js";
+import type { Skill } from "$core";
 
 export const arrayMethodsLesson: Skill = {
   name: "arrays",

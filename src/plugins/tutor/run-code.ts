@@ -5,7 +5,7 @@
  * and returns the console output. Used by the tutor to verify student solutions.
  */
 
-import type { Extension } from "../../lib/index.js";
+import type { Extension } from "$core";
 
 export const runCodeExtension: Extension = (api) => {
   api.registerTool({

@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { Agent } from "../../../../src/lib/index.js";
+import { Agent } from "$core";
 import { askUserExtension, codeReviewSkill, litComponentSkill, builtinTemplates } from "../../../../src/plugins/index.js";
 import "./api-key-screen.js";
 import "./chat-view.js";

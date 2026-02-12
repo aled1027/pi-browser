@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
-import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse } from "../../../../src/lib/index.js";
+import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse } from "$core";
 import "./user-input-form.js";
 import "./code-editor.js";
 import "./output-panel.js";

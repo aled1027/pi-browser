@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
-import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall } from "../../../../src/lib/index.js";
+import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall } from "$core";
 import "./user-input-form.js";
 
 interface ChatMessage {
