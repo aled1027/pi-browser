@@ -4,6 +4,12 @@ A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/).
 
 Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
 
+## TODO:
+
+- Add the ability for pi-browser to writes its own extension and load them
+    - It needs to know how to write its own extension (via default skill)
+    - It needs to be able to load them on the fly
+
 ## Setup
 
 ```bash

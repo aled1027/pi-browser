@@ -169,47 +169,28 @@
     streamText = "";
     streamToolCalls = [];
 
-    let fullText = "";
-    const toolCalls: ToolCall[] = [];
-
-    try {
-      for await (const event of agent.prompt(text)) {
-        switch (event.type) {
-          case "text_delta":
-            fullText += event.delta;
-            streamText = fullText;
-            break;
-          case "tool_call_start":
-            toolCalls.push(event.toolCall);
-            streamToolCalls = [...toolCalls];
-            break;
-          case "tool_call_end": {
-            const idx = toolCalls.findIndex((tc) => tc.id === event.toolCall.id);
-            if (idx >= 0) {
-              toolCalls[idx] = event.toolCall;
-              streamToolCalls = [...toolCalls];
-            }
-            break;
-          }
-          case "error":
-            fullText += `\n\n**Error:** ${event.error}`;
-            streamText = fullText;
-            break;
-        }
-      }
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") {
-        fullText += `\n\n**Error:** ${e}`;
-      }
-    }
+    const localToolCalls: ToolCall[] = [];
+    const result = await agent.send(text, {
+      onText: (_delta, full) => { streamText = full; },
+      onToolCallStart: (tc) => {
+        localToolCalls.push(tc);
+        streamToolCalls = [...localToolCalls];
+      },
+      onToolCallEnd: (tc) => {
+        const idx = localToolCalls.findIndex((t) => t.id === tc.id);
+        if (idx >= 0) localToolCalls[idx] = tc;
+        streamToolCalls = [...localToolCalls];
+      },
+      onError: (err) => { streamText += `\n\n**Error:** ${err}`; },
+    });
 
     messages = [
       ...messages,
       {
         id: nextId++,
         role: "assistant",
-        content: fullText,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        content: result.text,
+        toolCalls: result.toolCalls.length > 0 ? result.toolCalls : undefined,
       },
     ];
     streamText = "";

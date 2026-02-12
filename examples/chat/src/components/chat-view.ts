@@ -468,49 +468,28 @@ export class ChatView extends LitElement {
     this.streamText = "";
     this.streamToolCalls = [];
 
-    let fullText = "";
-    const toolCalls: ToolCall[] = [];
-
-    try {
-      for await (const event of this.agent.prompt(text)) {
-        switch (event.type) {
-          case "text_delta":
-            fullText += event.delta;
-            this.streamText = fullText;
-            break;
-          case "tool_call_start":
-            toolCalls.push(event.toolCall);
-            this.streamToolCalls = [...toolCalls];
-            break;
-          case "tool_call_end": {
-            const idx = toolCalls.findIndex(
-              (tc) => tc.id === event.toolCall.id
-            );
-            if (idx >= 0) {
-              toolCalls[idx] = event.toolCall;
-              this.streamToolCalls = [...toolCalls];
-            }
-            break;
-          }
-          case "error":
-            fullText += `\n\n**Error:** ${event.error}`;
-            this.streamText = fullText;
-            break;
-        }
-      }
-    } catch (e) {
-      if ((e as Error).name !== "AbortError") {
-        fullText += `\n\n**Error:** ${e}`;
-      }
-    }
+    const streamToolCalls: ToolCall[] = [];
+    const result = await this.agent.send(text, {
+      onText: (_delta, full) => { this.streamText = full; },
+      onToolCallStart: (tc) => {
+        streamToolCalls.push(tc);
+        this.streamToolCalls = [...streamToolCalls];
+      },
+      onToolCallEnd: (tc) => {
+        const idx = streamToolCalls.findIndex((t) => t.id === tc.id);
+        if (idx >= 0) streamToolCalls[idx] = tc;
+        this.streamToolCalls = [...streamToolCalls];
+      },
+      onError: (err) => { this.streamText += `\n\n**Error:** ${err}`; },
+    });
 
     this.messages = [
       ...this.messages,
       {
         id: ChatView.nextId++,
         role: "assistant",
-        content: fullText,
-        toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+        content: result.text,
+        toolCalls: result.toolCalls.length > 0 ? result.toolCalls : undefined,
       },
     ];
     this.streamText = "";

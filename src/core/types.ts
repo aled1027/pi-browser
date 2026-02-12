@@ -38,3 +38,23 @@ export type AgentEvent =
   | { type: "tool_loop_message"; message: Message }
   | { type: "turn_end" }
   | { type: "error"; error: string };
+
+/** Result returned by the simplified `send()` API */
+export interface PromptResult {
+  /** The full accumulated assistant text response */
+  text: string;
+  /** All tool calls made during this turn (with results) */
+  toolCalls: ToolCall[];
+}
+
+/** Optional callbacks for streaming updates during `send()` */
+export interface PromptCallbacks {
+  /** Called on each text chunk. Receives the delta and the full accumulated text so far. */
+  onText?: (delta: string, fullText: string) => void;
+  /** Called when a tool call begins */
+  onToolCallStart?: (toolCall: ToolCall) => void;
+  /** Called when a tool call completes (with result) */
+  onToolCallEnd?: (toolCall: ToolCall) => void;
+  /** Called on errors that don't abort the stream */
+  onError?: (error: string) => void;
+}

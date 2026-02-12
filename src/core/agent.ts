@@ -6,7 +6,7 @@
  * that examples need to interact with.
  */
 
-import type { Message, AgentEvent, ToolDefinition } from "./types.js";
+import type { Message, AgentEvent, ToolDefinition, PromptResult, PromptCallbacks } from "./types.js";
 import type { Extension, UserInputRequest, UserInputResponse } from "./extensions.js";
 import type { Skill } from "./skills.js";
 import type { PromptTemplate } from "./prompt-templates.js";
@@ -342,6 +342,57 @@ export class Agent {
 
     // Auto-persist after each completed turn
     await this.persist();
+  }
+
+  /**
+   * Simplified prompt API — send a message and get back the result.
+   *
+   * Use optional callbacks for streaming UI updates. Returns the final
+   * accumulated text and tool calls.
+   *
+   * ```ts
+   * const result = await agent.send("Hello", {
+   *   onText: (delta, full) => updateUI(full),
+   *   onToolCallEnd: (tc) => console.log("Tool done:", tc.name),
+   * });
+   * console.log(result.text, result.toolCalls);
+   * ```
+   */
+  async send(text: string, callbacks?: PromptCallbacks): Promise<PromptResult> {
+    let fullText = "";
+    const toolCalls: import("./types.js").ToolCall[] = [];
+
+    try {
+      for await (const event of this.prompt(text)) {
+        switch (event.type) {
+          case "text_delta":
+            fullText += event.delta;
+            callbacks?.onText?.(event.delta, fullText);
+            break;
+          case "tool_call_start":
+            toolCalls.push(event.toolCall);
+            callbacks?.onToolCallStart?.(event.toolCall);
+            break;
+          case "tool_call_end": {
+            const idx = toolCalls.findIndex((tc) => tc.id === event.toolCall.id);
+            if (idx >= 0) toolCalls[idx] = event.toolCall;
+            callbacks?.onToolCallEnd?.(event.toolCall);
+            break;
+          }
+          case "error":
+            callbacks?.onError?.(event.error);
+            break;
+        }
+      }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") {
+        // Return what we have so far
+      } else {
+        throw e;
+      }
+    }
+
+    return { text: fullText, toolCalls };
   }
 
   abort(): void {

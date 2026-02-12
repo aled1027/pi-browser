@@ -8,6 +8,8 @@ export type {
   ToolResult,
   ToolDefinition,
   AgentEvent,
+  PromptResult,
+  PromptCallbacks,
 } from "./types.js";
 
 export type {
