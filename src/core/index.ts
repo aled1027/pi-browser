@@ -1,6 +1,6 @@
-// pi-browser core library
+// pi-browser core library — Agent is the primary public API
 export { Agent } from "./agent.js";
-export type { AgentConfig } from "./agent.js";
+export type { AgentConfig, ThreadMeta } from "./agent.js";
 
 export type {
   Message,
@@ -10,7 +10,6 @@ export type {
   AgentEvent,
 } from "./types.js";
 
-export { ExtensionRegistry } from "./extensions.js";
 export type {
   Extension,
   PiBrowserAPI,
@@ -19,17 +18,8 @@ export type {
   UserInputResponse,
 } from "./extensions.js";
 
-export { SkillRegistry } from "./skills.js";
 export type { Skill } from "./skills.js";
 
-export { PromptTemplateRegistry } from "./prompt-templates.js";
 export type { PromptTemplate } from "./prompt-templates.js";
 
-export { VirtualFS, createTools } from "./tools.js";
-export { runAgent } from "./openrouter.js";
-
-export { ThreadStorage } from "./storage.js";
-export type { ThreadMeta } from "./storage.js";
-
-export { ThreadManager } from "./thread-manager.js";
-export type { ThreadData } from "./thread-manager.js";
+export { VirtualFS } from "./tools.js";

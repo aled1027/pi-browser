@@ -1,7 +1,7 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
-import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall } from "$core";
+import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall, ThreadMeta } from "$core";
 import "./user-input-form.js";
 
 interface ChatMessage {
@@ -18,7 +18,110 @@ export class ChatView extends LitElement {
     :host {
       height: 100%;
       display: flex;
+      flex-direction: row;
+    }
+
+    /* Thread sidebar */
+    .sidebar {
+      width: 220px;
+      min-width: 220px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .new-thread-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      font-size: 16px;
+      cursor: pointer;
+      padding: 2px 8px;
+      line-height: 1;
+    }
+
+    .new-thread-btn:hover {
+      background: var(--bg-input);
+    }
+
+    .thread-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    .thread-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--text);
+      transition: background 0.1s;
+    }
+
+    .thread-item:hover {
+      background: var(--bg-input);
+    }
+
+    .thread-item.active {
+      background: var(--bg-input);
+      border-left: 2px solid var(--accent);
+      padding-left: 10px;
+    }
+
+    .thread-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .thread-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 0 2px;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .thread-item:hover .thread-delete {
+      opacity: 1;
+    }
+
+    .thread-delete:hover {
+      color: var(--error);
+    }
+
+    /* Main chat area */
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
     }
 
     .header {
@@ -213,8 +316,10 @@ export class ChatView extends LitElement {
   `;
 
   @property({ attribute: false }) agent!: Agent;
+  @property({ type: Number }) agentVersion = 0;
 
   @state() private messages: ChatMessage[] = [];
+  @state() private threads: ThreadMeta[] = [];
   @state() private input = "";
   @state() private streaming = false;
   @state() private streamText = "";
@@ -230,11 +335,48 @@ export class ChatView extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.setupAgent();
+  }
+
+  willUpdate(changed: Map<string, unknown>) {
+    if (changed.has("agent") || changed.has("agentVersion")) {
+      this.setupAgent();
+    }
+  }
+
+  private setupAgent() {
+    if (!this.agent) return;
+
     this.agent.setUserInputHandler((request) => {
       return new Promise<UserInputResponse>((resolve) => {
         this.pendingInput = { request, resolve };
       });
     });
+
+    this.rebuildMessages();
+    this.refreshThreadList();
+  }
+
+  private rebuildMessages() {
+    const agentMessages = this.agent.getMessages();
+    const display: ChatMessage[] = [];
+    for (const m of agentMessages) {
+      if (m.role === "user") {
+        display.push({ id: ChatView.nextId++, role: "user", content: m.content });
+      } else if (m.role === "assistant") {
+        display.push({
+          id: ChatView.nextId++,
+          role: "assistant",
+          content: m.content,
+          toolCalls: m.toolCalls,
+        });
+      }
+    }
+    this.messages = display;
+  }
+
+  private refreshThreadList() {
+    this.threads = this.agent.listThreads();
   }
 
   private scrollToBottom() {
@@ -374,7 +516,37 @@ export class ChatView extends LitElement {
     this.streamText = "";
     this.streamToolCalls = [];
     this.streaming = false;
+
+    // Refresh thread list (name may have changed)
+    this.refreshThreadList();
   }
+
+  // --- Thread actions (all via agent) ---
+
+  private async handleNewThread() {
+    await this.agent.newThread();
+    this.rebuildMessages();
+    this.refreshThreadList();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
+  private async handleSwitchThread(threadId: string) {
+    if (threadId === this.agent.activeThreadId) return;
+    await this.agent.switchThread(threadId);
+    this.rebuildMessages();
+    this.refreshThreadList();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
+  private async handleDeleteThread(e: Event, threadId: string) {
+    e.stopPropagation();
+    await this.agent.deleteThread(threadId);
+    this.rebuildMessages();
+    this.refreshThreadList();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
+  // --- Rendering ---
 
   private renderToolCalls(toolCalls: ToolCall[]) {
     return html`
@@ -422,89 +594,124 @@ export class ChatView extends LitElement {
     `;
   }
 
+  private renderSidebar() {
+    return html`
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Threads</span>
+          <button
+            class="new-thread-btn"
+            @click=${this.handleNewThread}
+            title="New thread"
+          >+</button>
+        </div>
+        <div class="thread-list">
+          ${this.threads.map(
+            (t) => html`
+              <div
+                class="thread-item ${t.id === this.agent.activeThreadId ? "active" : ""}"
+                @click=${() => this.handleSwitchThread(t.id)}
+              >
+                <span class="thread-name">${t.name}</span>
+                <button
+                  class="thread-delete"
+                  @click=${(e: Event) => this.handleDeleteThread(e, t.id)}
+                  title="Delete thread"
+                >×</button>
+              </div>
+            `
+          )}
+        </div>
+      </div>
+    `;
+  }
+
   render() {
     return html`
-      <div class="header">
-        <span class="title">π browser</span>
-        <span>
-          <span class="model">anthropic/claude-sonnet-4</span>
-          <a href="/examples/tutor/index.html" style="color: var(--accent); font-size: 12px; margin-left: 12px; text-decoration: none; opacity: 0.7;">→ tutor</a>
-        </span>
-      </div>
+      ${this.renderSidebar()}
+      <div class="chat-main">
+        <div class="header">
+          <span class="title">π browser</span>
+          <span>
+            <span class="model">anthropic/claude-sonnet-4</span>
+            <a href="/examples/tutor/index.html" style="color: var(--accent); font-size: 12px; margin-left: 12px; text-decoration: none; opacity: 0.7;">→ tutor</a>
+          </span>
+        </div>
 
-      <div class="messages">
-        ${repeat(
-          this.messages,
-          (m) => m.id,
-          (m) => this.renderMessage(m)
-        )}
-        ${this.streaming && (this.streamText || this.streamToolCalls.length > 0)
-          ? this.renderMessage(
-              {
-                id: -1,
-                role: "assistant",
-                content: this.streamText,
-                toolCalls:
-                  this.streamToolCalls.length > 0
-                    ? this.streamToolCalls
-                    : undefined,
-              },
-              true
-            )
+        <div class="messages">
+          ${repeat(
+            this.messages,
+            (m) => m.id,
+            (m) => this.renderMessage(m)
+          )}
+          ${this.streaming && (this.streamText || this.streamToolCalls.length > 0)
+            ? this.renderMessage(
+                {
+                  id: -1,
+                  role: "assistant",
+                  content: this.streamText,
+                  toolCalls:
+                    this.streamToolCalls.length > 0
+                      ? this.streamToolCalls
+                      : undefined,
+                },
+                true
+              )
+            : nothing}
+        </div>
+
+        <div class="input-area">
+          <div class="input-wrapper">
+            ${this.suggestions.length > 0
+              ? html`
+                  <div class="autocomplete">
+                    ${this.suggestions.map(
+                      (t, i) => html`
+                        <div
+                          class="autocomplete-item ${i ===
+                          this.selectedSuggestion
+                            ? "selected"
+                            : ""}"
+                          @mouseenter=${() => {
+                            this.selectedSuggestion = i;
+                          }}
+                          @click=${() => this.acceptSuggestion(t)}
+                        >
+                          <span class="autocomplete-name">/${t.name}</span>
+                          <span class="autocomplete-desc">${t.description}</span>
+                        </div>
+                      `
+                    )}
+                  </div>
+                `
+              : nothing}
+            <textarea
+              .value=${this.input}
+              @input=${this.handleInputChange}
+              placeholder="Send a message… (type / for templates)"
+              rows="1"
+              @keydown=${this.handleKeyDown}
+              ?disabled=${this.streaming}
+            ></textarea>
+          </div>
+          <button
+            class="send-btn"
+            @click=${this.streaming
+              ? () => this.agent.abort()
+              : () => this.handleSubmit()}
+            ?disabled=${!this.streaming && !this.input.trim()}
+          >
+            ${this.streaming ? "Stop" : "Send"}
+          </button>
+        </div>
+
+        ${this.pendingInput
+          ? html`<user-input-form
+              .request=${this.pendingInput.request}
+              @user-input-submit=${this.handleUserInputSubmit}
+            ></user-input-form>`
           : nothing}
       </div>
-
-      <div class="input-area">
-        <div class="input-wrapper">
-          ${this.suggestions.length > 0
-            ? html`
-                <div class="autocomplete">
-                  ${this.suggestions.map(
-                    (t, i) => html`
-                      <div
-                        class="autocomplete-item ${i ===
-                        this.selectedSuggestion
-                          ? "selected"
-                          : ""}"
-                        @mouseenter=${() => {
-                          this.selectedSuggestion = i;
-                        }}
-                        @click=${() => this.acceptSuggestion(t)}
-                      >
-                        <span class="autocomplete-name">/${t.name}</span>
-                        <span class="autocomplete-desc">${t.description}</span>
-                      </div>
-                    `
-                  )}
-                </div>
-              `
-            : nothing}
-          <textarea
-            .value=${this.input}
-            @input=${this.handleInputChange}
-            placeholder="Send a message… (type / for templates)"
-            rows="1"
-            @keydown=${this.handleKeyDown}
-            ?disabled=${this.streaming}
-          ></textarea>
-        </div>
-        <button
-          class="send-btn"
-          @click=${this.streaming
-            ? () => this.agent.abort()
-            : () => this.handleSubmit()}
-          ?disabled=${!this.streaming && !this.input.trim()}
-        >
-          ${this.streaming ? "Stop" : "Send"}
-        </button>
-      </div>
-
-      ${this.pendingInput
-        ? html`<user-input-form
-            .request=${this.pendingInput.request}
-            @user-input-submit=${this.handleUserInputSubmit}
-          ></user-input-form>`
-        : nothing}
     `;
   }
 }

@@ -92,19 +92,25 @@ export class TutorRoot extends LitElement {
 
   @state() private started = false;
   @state() private apiKey = localStorage.getItem("pi-browser-api-key") ?? "";
+  @state() private agentVersion = 0;
   private agent: Agent | null = null;
 
-  private handleStart(e: CustomEvent<string>) {
+  private async handleStart(e: CustomEvent<string>) {
     const key = e.detail;
     localStorage.setItem("pi-browser-api-key", key);
     this.apiKey = key;
-    this.agent = new Agent({
+
+    this.agent = await Agent.create({
       apiKey: key,
       systemPrompt: TUTOR_SYSTEM_PROMPT,
       extensions: [askUserExtension, runCodeExtension],
       promptTemplates: tutorTemplates,
     });
     this.started = true;
+  }
+
+  private handleThreadChanged() {
+    this.agentVersion++;
   }
 
   render() {
@@ -114,7 +120,11 @@ export class TutorRoot extends LitElement {
         @start-agent=${this.handleStart}
       ></api-key-screen>`;
     }
-    return html`<tutor-view .agent=${this.agent!}></tutor-view>`;
+    return html`<tutor-view
+      .agent=${this.agent!}
+      .agentVersion=${this.agentVersion}
+      @thread-changed=${this.handleThreadChanged}
+    ></tutor-view>`;
   }
 }
 

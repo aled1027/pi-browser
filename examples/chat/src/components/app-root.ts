@@ -17,19 +17,26 @@ export class AppRoot extends LitElement {
 
   @state() private started = false;
   @state() private apiKey = localStorage.getItem("pi-browser-api-key") ?? "";
+  @state() private agentVersion = 0; // bump to force chat-view re-render on thread switch
   private agent: Agent | null = null;
 
-  private handleStart(e: CustomEvent<string>) {
+  private async handleStart(e: CustomEvent<string>) {
     const key = e.detail;
     localStorage.setItem("pi-browser-api-key", key);
     this.apiKey = key;
-    this.agent = new Agent({
+
+    this.agent = await Agent.create({
       apiKey: key,
       extensions: [askUserExtension],
       skills: [codeReviewSkill, litComponentSkill],
       promptTemplates: builtinTemplates,
     });
     this.started = true;
+  }
+
+  private async handleThreadChanged() {
+    // Agent has already switched internally — just force re-render
+    this.agentVersion++;
   }
 
   render() {
@@ -39,7 +46,11 @@ export class AppRoot extends LitElement {
         @start-agent=${this.handleStart}
       ></api-key-screen>`;
     }
-    return html`<chat-view .agent=${this.agent!}></chat-view>`;
+    return html`<chat-view
+      .agent=${this.agent!}
+      .agentVersion=${this.agentVersion}
+      @thread-changed=${this.handleThreadChanged}
+    ></chat-view>`;
   }
 }
 

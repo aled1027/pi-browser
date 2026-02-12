@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
-import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse } from "$core";
+import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ThreadMeta } from "$core";
 import "./user-input-form.js";
 import "./code-editor.js";
 import "./output-panel.js";
@@ -12,7 +12,110 @@ export class TutorView extends LitElement {
     :host {
       height: 100%;
       display: flex;
+      flex-direction: row;
+    }
+
+    /* Thread sidebar */
+    .sidebar {
+      width: 200px;
+      min-width: 200px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      display: flex;
       flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .sidebar-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+    }
+
+    .new-thread-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--accent);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 1px 7px;
+      line-height: 1;
+    }
+
+    .new-thread-btn:hover {
+      background: var(--bg-input);
+    }
+
+    .thread-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    .thread-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      color: var(--text);
+      transition: background 0.1s;
+    }
+
+    .thread-item:hover {
+      background: var(--bg-input);
+    }
+
+    .thread-item.active {
+      background: var(--bg-input);
+      border-left: 2px solid var(--accent);
+      padding-left: 10px;
+    }
+
+    .thread-name {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      flex: 1;
+    }
+
+    .thread-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 13px;
+      padding: 0 2px;
+      opacity: 0;
+      transition: opacity 0.1s;
+    }
+
+    .thread-item:hover .thread-delete {
+      opacity: 1;
+    }
+
+    .thread-delete:hover {
+      color: var(--error);
+    }
+
+    /* Main content */
+    .main-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
     }
 
     /* Header */
@@ -261,10 +364,12 @@ export class TutorView extends LitElement {
   `;
 
   @property({ attribute: false }) agent!: Agent;
+  @property({ type: Number }) agentVersion = 0;
 
   @state() private lessonStarted = false;
   @state() private currentLesson = "";
   @state() private messages: Array<{ role: "user" | "tutor"; text: string }> = [];
+  @state() private threads: ThreadMeta[] = [];
   @state() private streaming = false;
   @state() private streamText = "";
   @state() private editorCode = "// Pick a lesson to get started!\n";
@@ -281,11 +386,58 @@ export class TutorView extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    this.setupAgent();
+  }
+
+  willUpdate(changed: Map<string, unknown>) {
+    if (changed.has("agent") || changed.has("agentVersion")) {
+      this.setupAgent();
+    }
+  }
+
+  private setupAgent() {
+    if (!this.agent) return;
+
     this.agent.setUserInputHandler((request) => {
       return new Promise<UserInputResponse>((resolve) => {
         this.pendingInput = { request, resolve };
       });
     });
+
+    this.rebuildMessages();
+    this.syncEditorFromFS();
+    this.refreshThreadList();
+
+    // Determine if a lesson is already in progress
+    const agentMessages = this.agent.getMessages();
+    const hasUserMessages = agentMessages.some((m) => m.role === "user");
+    this.lessonStarted = hasUserMessages;
+    if (hasUserMessages) {
+      const firstUser = agentMessages.find((m) => m.role === "user");
+      if (firstUser) {
+        const match = firstUser.content.match(/learn about:\s*(.+?)(\n|$)/);
+        this.currentLesson = match ? match[1].trim() : "Lesson";
+      }
+    } else {
+      this.currentLesson = "";
+    }
+  }
+
+  private rebuildMessages() {
+    const agentMessages = this.agent.getMessages();
+    const display: Array<{ role: "user" | "tutor"; text: string }> = [];
+    for (const m of agentMessages) {
+      if (m.role === "user") {
+        display.push({ role: "user", text: m.content });
+      } else if (m.role === "assistant") {
+        display.push({ role: "tutor", text: m.content });
+      }
+    }
+    this.messages = display;
+  }
+
+  private refreshThreadList() {
+    this.threads = this.agent.listThreads();
   }
 
   private scrollTutorToBottom() {
@@ -328,7 +480,6 @@ export class TutorView extends LitElement {
             this.streamText = fullText;
             break;
           case "tool_call_end":
-            // If the agent wrote to /exercise.js, update the editor
             this.syncEditorFromFS();
             break;
           case "error":
@@ -347,6 +498,7 @@ export class TutorView extends LitElement {
     this.streamText = "";
     this.streaming = false;
     this.syncEditorFromFS();
+    this.refreshThreadList();
   }
 
   private syncEditorFromFS() {
@@ -358,7 +510,6 @@ export class TutorView extends LitElement {
   // --- Quick actions ---
 
   private handleCheck() {
-    // Save student code to VFS before checking
     this.agent.fs.write("/exercise.js", this.editorCode);
     this.sendMessage("/check");
   }
@@ -376,7 +527,6 @@ export class TutorView extends LitElement {
   }
 
   private async handleRun() {
-    // Save and run locally via sandbox
     this.agent.fs.write("/exercise.js", this.editorCode);
     this.output = "Running...\n";
     try {
@@ -471,7 +621,6 @@ export class TutorView extends LitElement {
     if (!text || this.streaming) return;
     this.input = "";
     this.suggestions = [];
-    // Save editor state before sending
     this.agent.fs.write("/exercise.js", this.editorCode);
     this.sendMessage(text);
   }
@@ -488,82 +637,142 @@ export class TutorView extends LitElement {
     this.currentLesson = "";
   }
 
+  // --- Thread actions (all via agent) ---
+
+  private async handleNewThread() {
+    await this.agent.newThread();
+    this.setupAgent();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
+  private async handleSwitchThread(threadId: string) {
+    if (threadId === this.agent.activeThreadId) return;
+    await this.agent.switchThread(threadId);
+    this.setupAgent();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
+  private async handleDeleteThread(e: Event, threadId: string) {
+    e.stopPropagation();
+    await this.agent.deleteThread(threadId);
+    this.setupAgent();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
   // --- Render ---
+
+  private renderSidebar() {
+    return html`
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-title">Sessions</span>
+          <button
+            class="new-thread-btn"
+            @click=${this.handleNewThread}
+            title="New session"
+          >+</button>
+        </div>
+        <div class="thread-list">
+          ${this.threads.map(
+            (t) => html`
+              <div
+                class="thread-item ${t.id === this.agent.activeThreadId ? "active" : ""}"
+                @click=${() => this.handleSwitchThread(t.id)}
+              >
+                <span class="thread-name">${t.name}</span>
+                <button
+                  class="thread-delete"
+                  @click=${(e: Event) => this.handleDeleteThread(e, t.id)}
+                  title="Delete session"
+                >×</button>
+              </div>
+            `
+          )}
+        </div>
+      </div>
+    `;
+  }
 
   render() {
     if (!this.lessonStarted) {
-      return html`<lesson-picker @lesson-pick=${this.handleLessonPick}></lesson-picker>`;
+      return html`
+        ${this.renderSidebar()}
+        <div class="main-wrapper">
+          <lesson-picker @lesson-pick=${this.handleLessonPick}></lesson-picker>
+        </div>
+      `;
     }
 
     return html`
-      <div class="header">
-        <div class="header-left">
-          <span class="title">π tutor</span>
-          <span class="lesson-name">${this.currentLesson}</span>
-        </div>
-        <div class="header-actions">
-          <button class="header-btn" @click=${this.handleChangeTopic}>Change topic</button>
-        </div>
-      </div>
-
-      <div class="main">
-        <!-- Left: tutor panel -->
-        <div class="tutor-panel">
-          <div class="tutor-messages">
-            ${this.messages.map(m =>
-              m.role === "user"
-                ? html`<div class="tutor-msg tutor-msg-user">▸ ${m.text.length > 100 ? m.text.slice(0, 100) + "…" : m.text}</div>`
-                : html`<div class="tutor-msg">${m.text}</div>`
-            )}
-            ${this.streaming && this.streamText
-              ? html`<div class="tutor-msg">${this.streamText}<span class="cursor">▊</span></div>`
-              : nothing}
+      ${this.renderSidebar()}
+      <div class="main-wrapper">
+        <div class="header">
+          <div class="header-left">
+            <span class="title">π tutor</span>
+            <span class="lesson-name">${this.currentLesson}</span>
           </div>
+          <div class="header-actions">
+            <button class="header-btn" @click=${this.handleChangeTopic}>Change topic</button>
+          </div>
+        </div>
 
-          <div class="input-bar">
-            <div class="input-wrapper">
-              ${this.suggestions.length > 0
-                ? html`<div class="autocomplete">
-                    ${this.suggestions.map((t, i) => html`
-                      <div class="autocomplete-item ${i === this.selectedSuggestion ? "selected" : ""}"
-                           @mouseenter=${() => { this.selectedSuggestion = i; }}
-                           @click=${() => this.acceptSuggestion(t)}>
-                        <span class="autocomplete-name">/${t.name}</span>
-                        <span class="autocomplete-desc">${t.description}</span>
-                      </div>
-                    `)}
-                  </div>`
+        <div class="main">
+          <div class="tutor-panel">
+            <div class="tutor-messages">
+              ${this.messages.map(m =>
+                m.role === "user"
+                  ? html`<div class="tutor-msg tutor-msg-user">▸ ${m.text.length > 100 ? m.text.slice(0, 100) + "…" : m.text}</div>`
+                  : html`<div class="tutor-msg">${m.text}</div>`
+              )}
+              ${this.streaming && this.streamText
+                ? html`<div class="tutor-msg">${this.streamText}<span class="cursor">▊</span></div>`
                 : nothing}
-              <input
-                .value=${this.input}
-                @input=${this.handleInput}
-                @keydown=${this.handleKeyDown}
-                placeholder="Ask a question or type / for commands…"
-                ?disabled=${this.streaming}
-              />
             </div>
-            <button class="send-btn"
-              @click=${this.streaming ? () => this.agent.abort() : () => this.handleSubmit()}
-              ?disabled=${!this.streaming && !this.input.trim()}>
-              ${this.streaming ? "Stop" : "Send"}
-            </button>
-          </div>
-        </div>
 
-        <!-- Right: editor + output -->
-        <div class="right-panel">
-          <div class="quick-actions">
-            <button class="action-btn run-btn" @click=${this.handleRun} ?disabled=${this.streaming}>▶ Run</button>
-            <button class="action-btn primary" @click=${this.handleCheck} ?disabled=${this.streaming}>✓ Check</button>
-            <button class="action-btn" @click=${this.handleHint} ?disabled=${this.streaming}>💡 Hint</button>
-            <button class="action-btn" @click=${this.handleNext} ?disabled=${this.streaming}>→ Next</button>
-            <button class="action-btn" @click=${this.handleSolution} ?disabled=${this.streaming}>🔓 Solution</button>
+            <div class="input-bar">
+              <div class="input-wrapper">
+                ${this.suggestions.length > 0
+                  ? html`<div class="autocomplete">
+                      ${this.suggestions.map((t, i) => html`
+                        <div class="autocomplete-item ${i === this.selectedSuggestion ? "selected" : ""}"
+                             @mouseenter=${() => { this.selectedSuggestion = i; }}
+                             @click=${() => this.acceptSuggestion(t)}>
+                          <span class="autocomplete-name">/${t.name}</span>
+                          <span class="autocomplete-desc">${t.description}</span>
+                        </div>
+                      `)}
+                    </div>`
+                  : nothing}
+                <input
+                  .value=${this.input}
+                  @input=${this.handleInput}
+                  @keydown=${this.handleKeyDown}
+                  placeholder="Ask a question or type / for commands…"
+                  ?disabled=${this.streaming}
+                />
+              </div>
+              <button class="send-btn"
+                @click=${this.streaming ? () => this.agent.abort() : () => this.handleSubmit()}
+                ?disabled=${!this.streaming && !this.input.trim()}>
+                ${this.streaming ? "Stop" : "Send"}
+              </button>
+            </div>
           </div>
-          <code-editor
-            .code=${this.editorCode}
-            @code-change=${this.handleCodeChange}
-          ></code-editor>
-          <output-panel .output=${this.output}></output-panel>
+
+          <div class="right-panel">
+            <div class="quick-actions">
+              <button class="action-btn run-btn" @click=${this.handleRun} ?disabled=${this.streaming}>▶ Run</button>
+              <button class="action-btn primary" @click=${this.handleCheck} ?disabled=${this.streaming}>✓ Check</button>
+              <button class="action-btn" @click=${this.handleHint} ?disabled=${this.streaming}>💡 Hint</button>
+              <button class="action-btn" @click=${this.handleNext} ?disabled=${this.streaming}>→ Next</button>
+              <button class="action-btn" @click=${this.handleSolution} ?disabled=${this.streaming}>🔓 Solution</button>
+            </div>
+            <code-editor
+              .code=${this.editorCode}
+              @code-change=${this.handleCodeChange}
+            ></code-editor>
+            <output-panel .output=${this.output}></output-panel>
+          </div>
         </div>
       </div>
 
