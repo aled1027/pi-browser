@@ -46,12 +46,8 @@ function writeThreadList(list: ThreadMeta[]): void {
 // ---------------------------------------------------------------------------
 
 const DB_NAME = "pi-browser";
-const DB_VERSION = 2; // bumped for new VFS store
+const DB_VERSION = 3; // v3: removed legacy per-thread "fs" store
 const STORE_MESSAGES = "messages"; // key: threadId, value: Message[]
-/** @deprecated Legacy per-thread FS store from DB_VERSION 1. Kept so the
- *  upgrade path doesn't lose the object store, and clearAll() can wipe it.
- *  No code writes to this store — it can be removed in a future DB version bump. */
-const STORE_FS = "fs";
 const STORE_AGENT_VFS = "agent-vfs"; // key: "vfs", value: Record<string,string>
 
 function openDB(): Promise<IDBDatabase> {
@@ -62,8 +58,9 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_MESSAGES)) {
         db.createObjectStore(STORE_MESSAGES);
       }
-      if (!db.objectStoreNames.contains(STORE_FS)) {
-        db.createObjectStore(STORE_FS);
+      // Remove legacy per-thread "fs" store from v1/v2
+      if (db.objectStoreNames.contains("fs")) {
+        db.deleteObjectStore("fs");
       }
       if (!db.objectStoreNames.contains(STORE_AGENT_VFS)) {
         db.createObjectStore(STORE_AGENT_VFS);
@@ -228,7 +225,6 @@ export class ThreadStorage {
     if (db) {
       await Promise.all([
         idbClear(db, STORE_MESSAGES),
-        idbClear(db, STORE_FS), // legacy store, kept for migration cleanup
         idbClear(db, STORE_AGENT_VFS),
       ]);
     }
