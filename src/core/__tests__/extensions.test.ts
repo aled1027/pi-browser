@@ -116,6 +116,8 @@ describe("ExtensionRegistry", () => {
         registerTool: (tool, name) => reg.registerTool(tool, name),
         on: (event, handler) => reg.on(event, handler),
         requestUserInput: (req) => reg.requestUserInput(req),
+        addExtension: async () => {},
+        removeExtension: async () => {},
       };
 
       await reg.load([ext1, ext2], host);

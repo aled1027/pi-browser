@@ -323,6 +323,12 @@ export class Agent implements ExtensionHost {
       requestUserInput: (req: UserInputRequest) => {
         return this.requestUserInput(req);
       },
+      addExtension: (src: string, name: string) => {
+        return this.addExtension(src, name);
+      },
+      removeExtension: (name: string) => {
+        return this.removeExtension(name);
+      },
     };
 
     await fn(scopedHost);
@@ -668,6 +674,12 @@ export class Agent implements ExtensionHost {
             },
             requestUserInput: (req: UserInputRequest) => {
               return this.requestUserInput(req);
+            },
+            addExtension: (src: string, name: string) => {
+              return this.addExtension(src, name);
+            },
+            removeExtension: (name: string) => {
+              return this.removeExtension(name);
             },
           };
           await fn(scopedHost);

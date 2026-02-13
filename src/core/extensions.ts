@@ -51,6 +51,18 @@ export interface ExtensionHost {
    * Pauses tool execution until the user submits.
    */
   requestUserInput(request: UserInputRequest): Promise<UserInputResponse>;
+
+  /**
+   * Dynamically add an extension from source code and persist it to VFS.
+   * The source must be a function expression: `(agent) => { ... }`
+   */
+  addExtension(source: string, filename: string): Promise<void>;
+
+  /**
+   * Remove a previously added extension by name.
+   * Unregisters its tools and removes from VFS.
+   */
+  removeExtension(name: string): Promise<void>;
 }
 
 /**

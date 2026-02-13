@@ -269,6 +269,28 @@ export class ChatView extends LitElement {
       cursor: not-allowed;
     }
 
+    .clear-btn {
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: none;
+      color: var(--text-muted);
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+
+    .clear-btn:hover {
+      color: var(--error);
+      border-color: var(--error);
+    }
+
+    .clear-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
     /* Autocomplete */
     .autocomplete {
       position: absolute;
@@ -526,6 +548,13 @@ export class ChatView extends LitElement {
     this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
   }
 
+  private async handleClear() {
+    await this.agent.reset();
+    this.rebuildMessages();
+    this.refreshThreadList();
+    this.dispatchEvent(new CustomEvent("thread-changed", { bubbles: true, composed: true }));
+  }
+
   private async handleDeleteThread(e: Event, threadId: string) {
     e.stopPropagation();
     await this.agent.deleteThread(threadId);
@@ -621,7 +650,13 @@ export class ChatView extends LitElement {
         <div class="header">
           <span class="title">π browser</span>
           <span>
-            <span class="model">anthropic/claude-sonnet-4</span>
+            <button
+              class="clear-btn"
+              @click=${this.handleClear}
+              ?disabled=${this.streaming}
+              title="Clear all threads and reset agent"
+            >Clear</button>
+            <span class="model" style="margin-left: 12px;">anthropic/claude-sonnet-4</span>
             <span style="font-size: 12px; margin-left: 12px; color: var(--text-muted); opacity: 0.7;">chat</span>
           </span>
         </div>
