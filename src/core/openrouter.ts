@@ -38,10 +38,12 @@ function toolsToOpenAI(tools: ToolDefinition[]) {
  */
 export async function* runAgent(
   messages: Message[],
-  tools: ToolDefinition[],
+  tools: ToolDefinition[] | (() => ToolDefinition[]),
   options: OpenRouterOptions,
   signal?: AbortSignal
 ): AsyncGenerator<AgentEvent> {
+  /** Resolve tools — supports both a static array and a dynamic getter. */
+  const getTools = typeof tools === "function" ? tools : () => tools;
   const model = options.model;
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
 
@@ -101,7 +103,7 @@ export async function* runAgent(
         body: JSON.stringify({
           model,
           messages: openaiMessages,
-          tools: tools.length > 0 ? toolsToOpenAI(tools) : undefined,
+          tools: getTools().length > 0 ? toolsToOpenAI(getTools()) : undefined,
           stream: true,
         }),
         signal: combinedSignal,
@@ -200,7 +202,7 @@ export async function* runAgent(
 
       yield { type: "tool_call_start", toolCall };
 
-      const tool = tools.find((t) => t.name === entry.name);
+      const tool = getTools().find((t) => t.name === entry.name);
       let result: ToolResult;
       if (tool) {
         try {

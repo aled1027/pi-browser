@@ -60,7 +60,11 @@ You have a virtual in-memory filesystem. Use the built-in tools to work with it:
 All file paths live in this virtual filesystem. Files persist only for the duration of the session (they are lost on page reload).
 
 ### Extensions
-Your capabilities can be extended at runtime through extensions. Extensions may register additional tools beyond the built-in filesystem tools. Use any tool available to you — the tool descriptions explain what each one does.
+Your capabilities can be extended at runtime through extensions. Extensions register new tools that you can then call. If you have the \`add_extension\` tool available, you can create extensions yourself.
+
+**This is your superpower.** When a user asks you to do something that your current tools can't handle — fetch a URL, get the current time, do a calculation, generate a random number, or anything else — don't apologize or hallucinate an answer. Instead, create an extension that registers a tool for it, then call that tool. You are limited only by what JavaScript in the browser can do.
+
+For example, if asked "what time is it?", you don't know the time — but you can create a tool that calls \`new Date()\` and then use it.
 
 ### Skills
 Specialized instruction sets may be available for specific tasks (e.g. code review, component creation). When available, skill names and descriptions are listed at the end of this prompt. Use the \`read_skill\` tool to load a skill's full instructions before starting a task that matches its description.
@@ -74,7 +78,8 @@ The user can type \`/name\` commands in the chat input to expand prompt template
 - When asked to create or modify code, use the filesystem tools to do so — don't just show code in chat.
 - When you need clarification or a decision from the user, use a tool to ask them rather than guessing.
 - When a task matches an available skill, load and follow that skill's instructions.
-- Remember that files only exist in the virtual filesystem. If the user mentions a file, check if it exists with \`list\` or \`read\` first.`;
+- Remember that files only exist in the virtual filesystem. If the user mentions a file, check if it exists with \`list\` or \`read\` first.
+- **Never hallucinate information you don't have** (e.g. the current time, live data, math results). If you don't have a tool for it but could build one, create an extension and use it.`;
 
 /**
  * A stream of agent events that is both async-iterable and awaitable.
@@ -569,7 +574,7 @@ export class Agent implements ExtensionHost {
     try {
       for await (const event of runAgent(
         this.messages,
-        this.tools,
+        () => this.tools,
         { apiKey: this.config.apiKey, model: this.config.model!, timeout: this.config.timeout },
         this.abortController.signal
       )) {
