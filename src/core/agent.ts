@@ -1,5 +1,5 @@
 /**
- * Agent — the single public API for pi-browser.
+ * Agent — the single public API for tau.
  *
  * Orchestrates messages, tools, extensions, skills, templates,
  * thread management, and persistence. This is the only class
@@ -38,11 +38,11 @@ export interface AgentConfig {
   timeout?: number;
 }
 
-const PI_BROWSER_DIR = "/.pi-browser";
-const EXTENSIONS_DIR = `${PI_BROWSER_DIR}/extensions`;
-const SKILLS_DIR = `${PI_BROWSER_DIR}/skills`;
+const TAU_DIR = "/.tau";
+const EXTENSIONS_DIR = `${TAU_DIR}/extensions`;
+const SKILLS_DIR = `${TAU_DIR}/skills`;
 
-const DEFAULT_SYSTEM_PROMPT = `You are pi-browser, a coding agent that runs entirely in the browser.
+const DEFAULT_SYSTEM_PROMPT = `You are tau, a coding agent that runs entirely in the browser.
 
 ## Environment
 
@@ -232,7 +232,7 @@ export class Agent implements ExtensionHost {
     await agent.ready();
     await agent.restoreOrCreateThread();
     if (typeof window !== "undefined") {
-      (window as any).__PI_AGENT__ = agent;
+      (window as any).__TAU_AGENT__ = agent;
     }
     return agent;
   }

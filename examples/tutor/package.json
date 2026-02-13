@@ -1,5 +1,5 @@
 {
-  "name": "pi-browser-tutor",
+  "name": "tau-tutor",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "lit": "^3.2.0",
-    "pi-browser": "file:../.."
+    "tau": "file:../.."
   },
   "devDependencies": {
     "typescript": "^5.7.0",

@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { Agent, addExtensionExtension, askUserExtension, runJavascriptExtension, codeReviewSkill, litComponentSkill, builtinTemplates } from "pi-browser";
+import { Agent, addExtensionExtension, askUserExtension, runJavascriptExtension, codeReviewSkill, litComponentSkill, builtinTemplates } from "tau";
 import "./api-key-screen.js";
 import "./chat-view.js";
 
@@ -15,7 +15,7 @@ export class AppRoot extends LitElement {
   `;
 
   @state() private started = false;
-  @state() private apiKey = localStorage.getItem("pi-browser-api-key") ?? "";
+  @state() private apiKey = localStorage.getItem("tau-api-key") ?? "";
   @state() private agentVersion = 0; // bump to force chat-view re-render on thread switch
   private agent: Agent | null = null;
 
@@ -27,7 +27,7 @@ export class AppRoot extends LitElement {
   }
 
   private async startWithKey(key: string) {
-    localStorage.setItem("pi-browser-api-key", key);
+    localStorage.setItem("tau-api-key", key);
     this.apiKey = key;
 
     this.agent = await Agent.create({

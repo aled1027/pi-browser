@@ -1,5 +1,5 @@
 /**
- * Prompt templates for pi-browser.
+ * Prompt templates for tau.
  *
  * Templates are named markdown snippets that expand when the user types
  * `/name` in the chat input. They support positional arguments:

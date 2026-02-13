@@ -1,4 +1,4 @@
-// pi-browser core library — Agent is the primary public API
+// tau core library — Agent is the primary public API
 export { Agent, PromptStream } from "./agent.js";
 export type { AgentConfig, ThreadMeta } from "./agent.js";
 
@@ -33,6 +33,6 @@ export {
   runJavascriptExtension,
   codeReviewSkill,
   litComponentSkill,
-  piBrowserSkill,
+  tauSkill,
   builtinTemplates,
 } from "./plugins/index.js";

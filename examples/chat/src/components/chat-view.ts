@@ -3,7 +3,7 @@ import { customElement, property, state, query } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { unsafeHTML } from "lit/directives/unsafe-html.js";
 import { marked } from "marked";
-import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall, ThreadMeta } from "pi-browser";
+import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall, ThreadMeta } from "tau";
 import "./user-input-form.js";
 import "./file-browser.js";
 

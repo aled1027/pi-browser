@@ -1,6 +1,6 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
-import type { Agent } from "pi-browser";
+import type { Agent } from "tau";
 
 @customElement("file-browser")
 export class FileBrowser extends LitElement {

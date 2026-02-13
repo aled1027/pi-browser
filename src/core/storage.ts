@@ -1,5 +1,5 @@
 /**
- * Persistence layer for pi-browser threads and agent-level VFS.
+ * Persistence layer for tau threads and agent-level VFS.
  *
  * Uses IndexedDB for large data (messages, filesystem) and
  * localStorage for small metadata (thread list, active thread).
@@ -25,8 +25,8 @@ export interface ThreadMeta {
 // localStorage helpers
 // ---------------------------------------------------------------------------
 
-const LS_ACTIVE_THREAD = "pi-browser-active-thread";
-const LS_THREAD_LIST = "pi-browser-threads";
+const LS_ACTIVE_THREAD = "tau-active-thread";
+const LS_THREAD_LIST = "tau-threads";
 
 function readThreadList(): ThreadMeta[] {
   try {
@@ -45,7 +45,7 @@ function writeThreadList(list: ThreadMeta[]): void {
 // IndexedDB helpers
 // ---------------------------------------------------------------------------
 
-const DB_NAME = "pi-browser";
+const DB_NAME = "tau";
 const DB_VERSION = 3; // v3: removed legacy per-thread "fs" store
 const STORE_MESSAGES = "messages"; // key: threadId, value: Message[]
 const STORE_AGENT_VFS = "agent-vfs"; // key: "vfs", value: Record<string,string>

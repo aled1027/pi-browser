@@ -34,9 +34,9 @@ Examples:
   - Generate UUID: \`return crypto.randomUUID()\`
   - Math: \`return Math.sqrt(144)\`
   - DOM query: \`return document.title\`
-  - Access the pi-browser agent: \`return window.__PI_AGENT__.getMessages().length\`
+  - Access the tau agent: \`return window.__TAU_AGENT__.getMessages().length\`
 
-The pi-browser Agent instance is available at \`window.__PI_AGENT__\`. You can use it to
+The tau Agent instance is available at \`window.__TAU_AGENT__\`. You can use it to
 modify yourself at runtime — register tools, add extensions, add skills, listen to events, etc.
 See the Agent/ExtensionHost API for available methods (registerTool, addExtension, addSkill, on, etc.).`,
     parameters: {

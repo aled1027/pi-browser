@@ -2,7 +2,7 @@ import { parseSkillMarkdown, type Skill } from "../../skills.js";
 
 import codeReviewMd from "./code-review.md";
 import litComponentMd from "./lit-component.md";
-import piBrowserMd from "./pi-browser.md";
+import tauMd from "./tau.md";
 
 function loadSkill(markdown: string, filename: string): Skill {
   const skill = parseSkillMarkdown(markdown);
@@ -14,4 +14,4 @@ function loadSkill(markdown: string, filename: string): Skill {
 
 export const codeReviewSkill = loadSkill(codeReviewMd, "code-review.md");
 export const litComponentSkill = loadSkill(litComponentMd, "lit-component.md");
-export const piBrowserSkill = loadSkill(piBrowserMd, "pi-browser.md");
+export const tauSkill = loadSkill(tauMd, "tau.md");

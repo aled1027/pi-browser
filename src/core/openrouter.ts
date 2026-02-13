@@ -77,7 +77,7 @@ export async function* runAgent(
   const referer =
     typeof window !== "undefined" && window.location
       ? window.location.origin
-      : "https://pi-browser";
+      : "https://tau";
 
   // Tool loop: keep going until the model responds with just text
   while (true) {
@@ -96,7 +96,7 @@ export async function* runAgent(
           Authorization: `Bearer ${options.apiKey}`,
           "Content-Type": "application/json",
           "HTTP-Referer": referer,
-          "X-Title": "pi-browser",
+          "X-Title": "tau",
         },
         body: JSON.stringify({
           model,

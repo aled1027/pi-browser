@@ -1,4 +1,4 @@
-import type { Skill } from "pi-browser";
+import type { Skill } from "tau";
 
 export const mathAssessmentSkill: Skill = {
   name: "math-assessment",

@@ -5,7 +5,7 @@
  * and returns the console output. Used by the tutor to verify student solutions.
  */
 
-import type { Extension } from "pi-browser";
+import type { Extension } from "tau";
 
 export const runCodeExtension: Extension = (agent) => {
   agent.registerTool({

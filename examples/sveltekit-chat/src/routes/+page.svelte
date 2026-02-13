@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from "svelte";
   import { createAgent } from "$lib/agent";
-  import type { Agent, PromptTemplate, ToolCall, ThreadMeta, UserInputRequest, UserInputResponse, AgentEvent } from "pi-browser";
+  import type { Agent, PromptTemplate, ToolCall, ThreadMeta, UserInputRequest, UserInputResponse, AgentEvent } from "tau";
 
   // --- State ---
 
@@ -38,7 +38,7 @@
   // --- Lifecycle ---
 
   onMount(() => {
-    const saved = localStorage.getItem("pi-browser-api-key") ?? "";
+    const saved = localStorage.getItem("tau-api-key") ?? "";
     apiKey = saved;
     if (saved) {
       startWithKey(saved);
@@ -48,7 +48,7 @@
   // --- Agent setup ---
 
   async function startWithKey(key: string) {
-    localStorage.setItem("pi-browser-api-key", key);
+    localStorage.setItem("tau-api-key", key);
     apiKey = key;
     agent = await createAgent(key);
     setupAgent();

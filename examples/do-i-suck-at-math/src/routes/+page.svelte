@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { Agent, askUserExtension, runJavascriptExtension } from "pi-browser";
-  import type { UserInputRequest, UserInputResponse } from "pi-browser";
+  import { Agent, askUserExtension, runJavascriptExtension } from "tau";
+  import type { UserInputRequest, UserInputResponse } from "tau";
   import { onMount } from "svelte";
   import { mathAssessmentSkill } from "$lib/math-assessment-skill";
 

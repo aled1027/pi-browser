@@ -1,10 +1,10 @@
 ---
-name: pi-browser
-description: Learn about pi-browser itself: its architecture, how to write and register extensions, skills, prompt templates, and how the core API works. Use when asked about pi-browser, how it works, or how to extend it.
+name: tau
+description: Learn about tau itself: its architecture, how to write and register extensions, skills, prompt templates, and how the core API works. Use when asked about tau, how it works, or how to extend it.
 ---
-# pi-browser
+# tau
 
-pi-browser is a browser-based AI coding agent framework. It provides AI-powered conversations, tool calling, streaming, and thread persistence — all client-side with no server. It communicates with LLMs via OpenRouter.
+tau is a browser-based AI coding agent framework. It provides AI-powered conversations, tool calling, streaming, and thread persistence — all client-side with no server. It communicates with LLMs via OpenRouter.
 
 ## Architecture
 
@@ -31,7 +31,7 @@ src/core/plugins/
 The `Agent` class is the primary API. Create one with `Agent.create({ apiKey })`. Use `agent.prompt(text)` to send messages and get responses — it returns a `PromptStream` that can be both awaited (simple) and async-iterated (streaming). The agent manages messages, tools, extensions, skills, templates, threads, and persistence. It implements `ExtensionHost`, so extensions receive the agent directly.
 
 ### VirtualFS
-An in-memory filesystem shared across all threads (per-agent). The agent's built-in tools (read, write, edit, list) operate on it. Access via `agent.fs`. VFS is persisted independently of threads. Dynamic extensions and skills are stored in `/.pi-browser/` on VFS and auto-loaded on startup.
+An in-memory filesystem shared across all threads (per-agent). The agent's built-in tools (read, write, edit, list) operate on it. Access via `agent.fs`. VFS is persisted independently of threads. Dynamic extensions and skills are stored in `/.tau/` on VFS and auto-loaded on startup.
 
 ### Tools
 Built-in tools: `read`, `write`, `edit`, `list` — all operate on VirtualFS. Extensions can register additional tools. Skills add a `read_skill` tool automatically.
@@ -48,7 +48,7 @@ Extensions are functions that receive the Agent (which implements `ExtensionHost
 ### Extension signature
 
 ```typescript
-import type { Extension } from "pi-browser";
+import type { Extension } from "tau";
 
 export const myExtension: Extension = (agent) => {
   // agent.registerTool(...)    — register a tool the model can call
@@ -60,7 +60,7 @@ export const myExtension: Extension = (agent) => {
 ### Registering a tool
 
 ```typescript
-import type { Extension } from "pi-browser";
+import type { Extension } from "tau";
 
 export const fetchExtension: Extension = (agent) => {
   agent.registerTool({
@@ -128,7 +128,7 @@ export const loggerExtension: Extension = (agent) => {
 #### Config-time (at creation)
 
 ```typescript
-import { Agent, askUserExtension } from "pi-browser";
+import { Agent, askUserExtension } from "tau";
 
 const agent = await Agent.create({
   apiKey: "sk-or-...",
@@ -200,7 +200,7 @@ interface Skill {
 ### Example skill
 
 ```typescript
-import type { Skill } from "pi-browser";
+import type { Skill } from "tau";
 
 export const apiDesignSkill: Skill = {
   name: "api-design",
@@ -229,7 +229,7 @@ export const apiDesignSkill: Skill = {
 #### Config-time
 
 ```typescript
-import { Agent, codeReviewSkill } from "pi-browser";
+import { Agent, codeReviewSkill } from "tau";
 
 const agent = await Agent.create({
   apiKey: "sk-or-...",
@@ -267,7 +267,7 @@ description: Design RESTful APIs. Use when asked to design or review an API.
 
 ### Adding a built-in skill
 
-To add a skill to the pi-browser library itself:
+To add a skill to the tau library itself:
 
 1. Create a new `.md` file in `src/core/plugins/skills/` with YAML frontmatter (name, description) and markdown content
 2. Import it in `src/core/plugins/skills/index.ts` and parse it with `parseSkillMarkdown`
@@ -313,24 +313,24 @@ Usage: `/scaffold typescript myapp with tests and linting`
 
 ---
 
-## Self-Modification via `window.__PI_AGENT__`
+## Self-Modification via `window.__TAU_AGENT__`
 
-The running Agent instance is exposed at `window.__PI_AGENT__`. You can access it from the `run_javascript` tool to modify yourself at runtime — no need to ask the user to write code or reload the page.
+The running Agent instance is exposed at `window.__TAU_AGENT__`. You can access it from the `run_javascript` tool to modify yourself at runtime — no need to ask the user to write code or reload the page.
 
 ### What you can do
 
-- **Register new tools**: `window.__PI_AGENT__.registerTool({ name, description, parameters, execute })`
-- **Add extensions dynamically**: `await window.__PI_AGENT__.addExtension(\`(agent) => { ... }\`, "my-ext")`
-- **Remove extensions**: `await window.__PI_AGENT__.removeExtension("my-ext")`
-- **Add skills**: `await window.__PI_AGENT__.addSkill({ name, description, content })`
-- **Remove skills**: `await window.__PI_AGENT__.removeSkill("skill-name")`
-- **Read messages**: `window.__PI_AGENT__.getMessages()`
-- **Access VFS**: `window.__PI_AGENT__.fs`
-- **Listen to events**: `window.__PI_AGENT__.on("agent_event", (e) => { ... })`
+- **Register new tools**: `window.__TAU_AGENT__.registerTool({ name, description, parameters, execute })`
+- **Add extensions dynamically**: `await window.__TAU_AGENT__.addExtension(\`(agent) => { ... }\`, "my-ext")`
+- **Remove extensions**: `await window.__TAU_AGENT__.removeExtension("my-ext")`
+- **Add skills**: `await window.__TAU_AGENT__.addSkill({ name, description, content })`
+- **Remove skills**: `await window.__TAU_AGENT__.removeSkill("skill-name")`
+- **Read messages**: `window.__TAU_AGENT__.getMessages()`
+- **Access VFS**: `window.__TAU_AGENT__.fs`
+- **Listen to events**: `window.__TAU_AGENT__.on("agent_event", (e) => { ... })`
 
 ### Persistence
 
-Not all changes via `window.__PI_AGENT__` survive a page reload:
+Not all changes via `window.__TAU_AGENT__` survive a page reload:
 
 | Method | Persisted? | Notes |
 |--------|-----------|-------|
@@ -341,13 +341,13 @@ Not all changes via `window.__PI_AGENT__` survive a page reload:
 | `fs.write(...)` / `fs.delete(...)` | ❌ No | VFS changes are in-memory until flushed. Call `await agent.persist()` to save to IndexedDB. |
 | `config.model = "..."` etc. | ❌ No | Config changes take effect immediately but are not persisted; lost on reload. |
 
-**Rule of thumb:** `addExtension()` and `addSkill()` persist automatically. Everything else is ephemeral unless you call `await window.__PI_AGENT__.persist()` (for VFS changes) or wrap the tool in an extension (for tools).
+**Rule of thumb:** `addExtension()` and `addSkill()` persist automatically. Everything else is ephemeral unless you call `await window.__TAU_AGENT__.persist()` (for VFS changes) or wrap the tool in an extension (for tools).
 
 ### Examples via `run_javascript`
 
 Register a tool on the fly:
 ```javascript
-const agent = window.__PI_AGENT__;
+const agent = window.__TAU_AGENT__;
 agent.registerTool({
   name: "current_time",
   description: "Return the current date and time",
@@ -359,7 +359,7 @@ return "Tool registered";
 
 Add a skill dynamically:
 ```javascript
-await window.__PI_AGENT__.addSkill({
+await window.__TAU_AGENT__.addSkill({
   name: "my-guide",
   description: "Custom guidelines for this project",
   content: "# My Guide\n\n- Always use TypeScript\n- Prefer composition over inheritance",
@@ -369,7 +369,7 @@ return "Skill added";
 
 Add a full extension (persisted to VFS):
 ```javascript
-await window.__PI_AGENT__.addExtension(`(agent) => {
+await window.__TAU_AGENT__.addExtension(`(agent) => {
   agent.registerTool({
     name: "word_count",
     description: "Count words in text",

@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { Agent, askUserExtension, runJavascriptExtension } from "pi-browser";
+import { Agent, askUserExtension, runJavascriptExtension } from "tau";
 import { tutorTemplates, runCodeExtension } from "../plugins/index.js";
 import "./api-key-screen.js";
 import "./tutor-view.js";
@@ -90,7 +90,7 @@ export class TutorRoot extends LitElement {
   `;
 
   @state() private started = false;
-  @state() private apiKey = localStorage.getItem("pi-browser-api-key") ?? "";
+  @state() private apiKey = localStorage.getItem("tau-api-key") ?? "";
   @state() private agentVersion = 0;
   private agent: Agent | null = null;
 
@@ -102,7 +102,7 @@ export class TutorRoot extends LitElement {
   }
 
   private async startWithKey(key: string) {
-    localStorage.setItem("pi-browser-api-key", key);
+    localStorage.setItem("tau-api-key", key);
     this.apiKey = key;
 
     this.agent = await Agent.create({

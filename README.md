@@ -1,4 +1,4 @@
-# pi-browser
+# tau
 
 A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/). Includes a core agent library and several example applications.
 
@@ -15,7 +15,7 @@ WARNING: THIS TOOL COULD RESULT IN HARMFUL CODE RUNNING IN YOUR BROWSER TAB.
 ## Quick start
 
 ```typescript
-import { Agent } from "pi-browser";
+import { Agent } from "tau";
 
 const agent = await Agent.create({ apiKey: "sk-or-..." });
 
@@ -31,7 +31,7 @@ for await (const event of stream) {
 console.log(stream.result.text);
 ```
 
-See [docs/pi-browser-core.md](docs/pi-browser-core.md) for the full API reference.
+See [docs/tau-core.md](docs/tau-core.md) for the full API reference.
 
 
 
@@ -60,7 +60,7 @@ npm run dev
 - **Tutor** (`npm run dev:tutor`) — AI tutor with skills and prompt templates (Lit + Vite)
 - **SvelteKit Chat** (`npm run dev:sveltekit`) — Chat app built with SvelteKit
 
-Examples import the library as `"pi-browser"` via `file:` references resolved through npm workspaces.
+Examples import the library as `"tau"` via `file:` references resolved through npm workspaces.
 
 To run the examples:
 

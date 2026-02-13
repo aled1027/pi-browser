@@ -1,4 +1,4 @@
-# pi-browser core library
+# tau core library
 
 A browser-based AI coding agent framework. The core library provides AI-powered conversations, tool calling, streaming, and thread persistence — all client-side with no server.
 
@@ -29,7 +29,7 @@ examples/
 ### Simple (non-streaming)
 
 ```typescript
-import { Agent } from "pi-browser";
+import { Agent } from "tau";
 
 const agent = await Agent.create({ apiKey: "sk-or-..." });
 
@@ -61,7 +61,7 @@ Everything else — extensions, skills, templates, threads — is opt-in.
 
 ## Public API
 
-Exported from `pi-browser`:
+Exported from `tau`:
 
 ```typescript
 // Classes
@@ -78,7 +78,7 @@ Skill, PromptTemplate
 parseSkillMarkdown, serializeSkillMarkdown
 
 // Built-in plugins
-askUserExtension, codeReviewSkill, litComponentSkill, piBrowserSkill, builtinTemplates
+askUserExtension, codeReviewSkill, litComponentSkill, tauSkill, builtinTemplates
 ```
 
 ---
@@ -220,7 +220,7 @@ await agent.addExtension(`(agent) => {
 
 The extension is:
 1. Evaluated and executed immediately (tools become available right away)
-2. Persisted to `/.pi-browser/extensions/<filename>.js` on the VFS
+2. Persisted to `/.tau/extensions/<filename>.js` on the VFS
 3. Auto-loaded on future agent startups
 
 #### `removeExtension(name): Promise<void>`
@@ -247,7 +247,7 @@ await agent.addSkill({
 
 The skill is:
 1. Registered immediately (available to the model right away)
-2. Persisted to `/.pi-browser/skills/<name>.md` as markdown with YAML frontmatter
+2. Persisted to `/.tau/skills/<name>.md` as markdown with YAML frontmatter
 3. Auto-loaded on future agent startups
 
 #### `removeSkill(name): Promise<void>`
@@ -393,7 +393,7 @@ const result = await agent.prompt("Summarize the data in /data.json");
 Dynamic extensions and skills are stored on the VFS and auto-loaded on startup:
 
 ```
-/.pi-browser/
+/.tau/
   extensions/
     fetch-url.js       ← JavaScript function: (agent) => { ... }
     my-tool.js
@@ -553,7 +553,7 @@ description: Design RESTful APIs. Use when asked to design or review an API.
 Use `parseSkillMarkdown()` and `serializeSkillMarkdown()` to convert:
 
 ```typescript
-import { parseSkillMarkdown, serializeSkillMarkdown } from "pi-browser";
+import { parseSkillMarkdown, serializeSkillMarkdown } from "tau";
 
 const skill = parseSkillMarkdown(markdownString);  // Skill | null
 const markdown = serializeSkillMarkdown(skill);     // string
@@ -565,7 +565,7 @@ When skills are registered, a `read_skill` tool is automatically added. The mode
 
 - **`codeReviewSkill`** — Code review guidelines
 - **`litComponentSkill`** — Lit web component creation
-- **`piBrowserSkill`** — pi-browser usage guide
+- **`tauSkill`** — tau usage guide
 
 ---
 
@@ -653,8 +653,8 @@ Messages are saved after each completed `prompt()` turn. On page reload, `Agent.
 
 When `Agent.create()` is called:
 1. VFS is loaded from its own IndexedDB store
-2. Extensions in `/.pi-browser/extensions/*.js` are evaluated and executed
-3. Skills in `/.pi-browser/skills/*.md` are parsed (YAML frontmatter) and registered
+2. Extensions in `/.tau/extensions/*.js` are evaluated and executed
+3. Skills in `/.tau/skills/*.md` are parsed (YAML frontmatter) and registered
 4. Config extensions from `AgentConfig.extensions` are loaded
 
 ```typescript
@@ -690,8 +690,8 @@ The timeout applies per HTTP request, not per `prompt()` call. A prompt that tri
 ## Full example
 
 ```typescript
-import { Agent, askUserExtension, codeReviewSkill, builtinTemplates } from "pi-browser";
-import type { Extension, Skill, PromptTemplate } from "pi-browser";
+import { Agent, askUserExtension, codeReviewSkill, builtinTemplates } from "tau";
+import type { Extension, Skill, PromptTemplate } from "tau";
 
 // Custom extension (config-time)
 const timestampExtension: Extension = (agent) => {

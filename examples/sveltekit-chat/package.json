@@ -1,5 +1,5 @@
 {
-  "name": "pi-browser-sveltekit-chat",
+  "name": "tau-sveltekit-chat",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.0",
     "@sveltejs/kit": "^2.0.0",
-    "pi-browser": "file:../..",
+    "tau": "file:../..",
     "svelte": "^5.0.0"
   },
   "devDependencies": {

@@ -1,11 +1,11 @@
 /**
- * Skills system for pi-browser.
+ * Skills system for tau.
  *
  * Skills are specialized instruction sets the model can load on-demand.
  * Like pi, only names and descriptions appear in the system prompt —
  * full content is loaded when the model calls the `read_skill` tool.
  *
- * Since pi-browser runs in the browser with no filesystem, skills are
+ * Since tau runs in the browser with no filesystem, skills are
  * registered programmatically rather than discovered from disk.
  */
 

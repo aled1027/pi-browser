@@ -1,4 +1,4 @@
-import type { PromptTemplate } from "pi-browser";
+import type { PromptTemplate } from "tau";
 
 export const tutorTemplates: PromptTemplate[] = [
   {

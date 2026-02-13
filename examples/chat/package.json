@@ -1,5 +1,5 @@
 {
-  "name": "pi-browser-chat",
+  "name": "tau-chat",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -11,7 +11,7 @@
   "dependencies": {
     "lit": "^3.2.0",
     "marked": "^17.0.2",
-    "pi-browser": "file:../.."
+    "tau": "file:../.."
   },
   "devDependencies": {
     "typescript": "^5.7.0",

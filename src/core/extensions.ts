@@ -1,5 +1,5 @@
 /**
- * Extension system for pi-browser.
+ * Extension system for tau.
  *
  * Extensions are functions that receive an Agent instance and use it to
  * register tools, subscribe to agent events, and request UI interactions.

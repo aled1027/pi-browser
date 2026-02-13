@@ -9,7 +9,7 @@ import {
   codeReviewSkill,
   litComponentSkill,
   builtinTemplates,
-} from "pi-browser";
+} from "tau";
 
 export async function createAgent(apiKey: string): Promise<Agent> {
   return Agent.create({
