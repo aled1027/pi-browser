@@ -12,7 +12,6 @@ Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/
 
 ## TODO:
 
-- Put the docs on the pages website too. So it's kind of like threejs with docs and the examples
 - Later: sync state or export. export would be download a zip and maybe could
 
 ## Quick start

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%230f0f0f'/><text x='50' y='72' font-size='65' text-anchor='middle' fill='white' font-family='system-ui'>τ</text></svg>" />
+    <title>tau — Documentation</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0f0f0f;
+        color: #e0e0e0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      /* Header */
+      header {
+        border-bottom: 1px solid #1a1a1a;
+        padding: 1rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        position: sticky;
+        top: 0;
+        background: #0f0f0f;
+        z-index: 100;
+      }
+      header .logo {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #fff;
+        text-decoration: none;
+      }
+      header nav {
+        display: flex;
+        gap: 1.5rem;
+        margin-left: auto;
+      }
+      header nav a {
+        color: #888;
+        text-decoration: none;
+        font-size: 0.9rem;
+        transition: color 0.15s;
+      }
+      header nav a:hover { color: #fff; }
+      header nav a.active { color: #6ea8fe; }
+
+      /* Layout */
+      .layout {
+        display: flex;
+        flex: 1;
+        max-width: 1400px;
+        margin: 0 auto;
+        width: 100%;
+      }
+
+      /* Sidebar */
+      .sidebar {
+        width: 260px;
+        flex-shrink: 0;
+        border-right: 1px solid #1a1a1a;
+        padding: 1.5rem 1rem;
+        position: sticky;
+        top: 57px;
+        height: calc(100vh - 57px);
+        overflow-y: auto;
+      }
+      .sidebar ul { list-style: none; }
+      .sidebar li { margin-bottom: 2px; }
+      .sidebar a {
+        display: block;
+        padding: 0.35rem 0.75rem;
+        color: #888;
+        text-decoration: none;
+        font-size: 0.85rem;
+        border-radius: 5px;
+        transition: all 0.15s;
+      }
+      .sidebar a:hover {
+        color: #e0e0e0;
+        background: #1a1a1a;
+      }
+      .sidebar a.active {
+        color: #6ea8fe;
+        background: #1a1a2a;
+      }
+      .sidebar .section-title {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #555;
+        padding: 0.75rem 0.75rem 0.25rem;
+        font-weight: 600;
+      }
+
+      /* Content */
+      .content {
+        flex: 1;
+        min-width: 0;
+        padding: 2rem 3rem 4rem;
+        max-width: 860px;
+      }
+
+      /* Markdown styling */
+      .content h1 {
+        font-size: 2rem;
+        color: #fff;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #2a2a2a;
+      }
+      .content h2 {
+        font-size: 1.5rem;
+        color: #fff;
+        margin-top: 2.5rem;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.4rem;
+        border-bottom: 1px solid #1a1a1a;
+      }
+      .content h3 {
+        font-size: 1.15rem;
+        color: #e0e0e0;
+        margin-top: 1.75rem;
+        margin-bottom: 0.5rem;
+      }
+      .content h4 {
+        font-size: 1rem;
+        color: #c0c0c0;
+        margin-top: 1.5rem;
+        margin-bottom: 0.5rem;
+      }
+      .content p {
+        line-height: 1.7;
+        margin-bottom: 1rem;
+        color: #c9d1d9;
+      }
+      .content ul, .content ol {
+        margin-bottom: 1rem;
+        padding-left: 1.5rem;
+      }
+      .content li {
+        line-height: 1.7;
+        margin-bottom: 0.25rem;
+        color: #c9d1d9;
+      }
+      .content a {
+        color: #6ea8fe;
+        text-decoration: none;
+      }
+      .content a:hover { text-decoration: underline; }
+      .content strong { color: #e0e0e0; }
+      .content code {
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        font-size: 0.88em;
+        background: #1a1a2a;
+        padding: 0.15em 0.4em;
+        border-radius: 4px;
+        color: #d2a8ff;
+      }
+      .content pre {
+        background: #161616;
+        border: 1px solid #2a2a2a;
+        border-radius: 8px;
+        padding: 1rem 1.25rem;
+        overflow-x: auto;
+        margin-bottom: 1rem;
+      }
+      .content pre code {
+        background: none;
+        padding: 0;
+        color: #c9d1d9;
+        font-size: 0.85rem;
+        line-height: 1.65;
+      }
+      .content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 1rem;
+      }
+      .content th, .content td {
+        padding: 0.6rem 0.8rem;
+        border: 1px solid #2a2a2a;
+        text-align: left;
+        font-size: 0.9rem;
+      }
+      .content th {
+        background: #1a1a1a;
+        color: #e0e0e0;
+        font-weight: 600;
+      }
+      .content td {
+        color: #c9d1d9;
+      }
+      .content td code {
+        font-size: 0.82em;
+      }
+      .content blockquote {
+        border-left: 3px solid #6ea8fe;
+        padding: 0.5rem 1rem;
+        margin-bottom: 1rem;
+        background: #1a1a1a;
+        border-radius: 0 6px 6px 0;
+      }
+      .content hr {
+        border: none;
+        border-top: 1px solid #2a2a2a;
+        margin: 2rem 0;
+      }
+      .content img {
+        max-width: 100%;
+        border-radius: 8px;
+      }
+
+      /* Loading */
+      .loading {
+        text-align: center;
+        padding: 4rem 2rem;
+        color: #888;
+      }
+      .loading .spinner {
+        display: inline-block;
+        width: 24px;
+        height: 24px;
+        border: 2px solid #2a2a2a;
+        border-top-color: #6ea8fe;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-bottom: 1rem;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* Mobile */
+      @media (max-width: 768px) {
+        .sidebar { display: none; }
+        .content { padding: 1.5rem 1rem 3rem; }
+        .content h1 { font-size: 1.5rem; }
+        .content h2 { font-size: 1.25rem; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="logo" href="../">τ tau</a>
+      <nav>
+        <a class="active" href="./">Docs</a>
+        <a href="../examples/">Examples</a>
+        <a href="https://github.com/aled1027/pi-browser">GitHub</a>
+      </nav>
+    </header>
+
+    <div class="layout">
+      <aside class="sidebar" id="sidebar">
+        <div class="loading"><div class="spinner"></div></div>
+      </aside>
+      <main class="content" id="content">
+        <div class="loading">
+          <div class="spinner"></div>
+          <p>Loading documentation...</p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      async function loadDocs() {
+        try {
+          const res = await fetch('./tau-core.md');
+          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          const md = await res.text();
+
+          // Render markdown
+          const html = marked.parse(md);
+          document.getElementById('content').innerHTML = html;
+
+          // Build sidebar from headings
+          buildSidebar();
+
+          // Handle hash navigation
+          if (window.location.hash) {
+            const el = document.querySelector(window.location.hash);
+            if (el) el.scrollIntoView();
+          }
+        } catch (err) {
+          document.getElementById('content').innerHTML =
+            `<h1>Error loading docs</h1><p>${err.message}</p>`;
+        }
+      }
+
+      function buildSidebar() {
+        const headings = document.querySelectorAll('#content h1, #content h2, #content h3');
+        const sidebar = document.getElementById('sidebar');
+        let html = '<ul>';
+        let currentH2 = false;
+
+        headings.forEach(h => {
+          // Ensure heading has an id for linking
+          if (!h.id) {
+            h.id = h.textContent
+              .toLowerCase()
+              .replace(/[^\w\s-]/g, '')
+              .replace(/\s+/g, '-')
+              .replace(/-+/g, '-');
+          }
+
+          if (h.tagName === 'H1') {
+            html += `<li><a href="#${h.id}" style="font-weight:600;color:#e0e0e0;">${h.textContent}</a></li>`;
+          } else if (h.tagName === 'H2') {
+            html += `<li class="section-title">${h.textContent}</li>`;
+            currentH2 = true;
+          } else if (h.tagName === 'H3') {
+            html += `<li><a href="#${h.id}">${h.textContent}</a></li>`;
+          }
+        });
+
+        html += '</ul>';
+        sidebar.innerHTML = html;
+
+        // Highlight active section on scroll
+        const observer = new IntersectionObserver(entries => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const id = entry.target.id;
+              sidebar.querySelectorAll('a').forEach(a => a.classList.remove('active'));
+              const active = sidebar.querySelector(`a[href="#${id}"]`);
+              if (active) active.classList.add('active');
+            }
+          });
+        }, { rootMargin: '-80px 0px -80% 0px' });
+
+        headings.forEach(h => observer.observe(h));
+      }
+
+      loadDocs();
+    </script>
+  </body>
+</html>

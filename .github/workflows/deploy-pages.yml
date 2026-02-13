@@ -33,25 +33,36 @@ jobs:
 
       - name: Build chat example
         working-directory: examples/chat
-        run: npx vite build --base /tau/chat/
+        run: npx vite build --base /tau/examples/chat/
 
       - name: Build tutor example
         working-directory: examples/tutor
-        run: npx vite build --base /tau/tutor/
+        run: npx vite build --base /tau/examples/tutor/
 
       - name: Build sveltekit-chat example
         working-directory: examples/sveltekit-chat
         env:
-          BASE_PATH: /tau/sveltekit-chat
+          BASE_PATH: /tau/examples/sveltekit-chat
         run: npx svelte-kit sync && npx vite build
 
       - name: Assemble site
         run: |
-          mkdir -p _site/chat _site/tutor _site/sveltekit-chat
-          cp examples/index.html _site/
-          cp -r examples/chat/dist/* _site/chat/
-          cp -r examples/tutor/dist/* _site/tutor/
-          cp -r examples/sveltekit-chat/build/* _site/sveltekit-chat/
+          mkdir -p _site/docs _site/examples/chat _site/examples/tutor _site/examples/sveltekit-chat
+
+          # Landing page
+          cp site/index.html _site/
+
+          # Docs
+          cp site/docs/index.html _site/docs/
+          cp docs/tau-core.md _site/docs/
+
+          # Examples index
+          cp examples/index.html _site/examples/
+
+          # Example builds
+          cp -r examples/chat/dist/* _site/examples/chat/
+          cp -r examples/tutor/dist/* _site/examples/tutor/
+          cp -r examples/sveltekit-chat/build/* _site/examples/sveltekit-chat/
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3

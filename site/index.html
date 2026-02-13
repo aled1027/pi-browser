@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='15' fill='%230f0f0f'/><text x='50' y='72' font-size='65' text-anchor='middle' fill='white' font-family='system-ui'>τ</text></svg>" />
+    <title>tau — browser-based AI coding agent</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        background: #0f0f0f;
+        color: #e0e0e0;
+        min-height: 100vh;
+      }
+
+      /* Header */
+      header {
+        border-bottom: 1px solid #1a1a1a;
+        padding: 1.5rem 2rem;
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+      }
+      header .logo {
+        font-size: 1.8rem;
+        font-weight: 700;
+        color: #fff;
+        text-decoration: none;
+      }
+      header nav {
+        display: flex;
+        gap: 1.5rem;
+        margin-left: auto;
+      }
+      header nav a {
+        color: #888;
+        text-decoration: none;
+        font-size: 0.95rem;
+        transition: color 0.15s;
+      }
+      header nav a:hover { color: #fff; }
+
+      /* Hero */
+      .hero {
+        text-align: center;
+        padding: 5rem 2rem 3rem;
+      }
+      .hero h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 0.75rem;
+        letter-spacing: -0.02em;
+      }
+      .hero h1 span { color: #6ea8fe; }
+      .hero p {
+        font-size: 1.2rem;
+        color: #888;
+        max-width: 600px;
+        margin: 0 auto 2rem;
+        line-height: 1.6;
+      }
+      .hero-actions {
+        display: flex;
+        gap: 1rem;
+        justify-content: center;
+        flex-wrap: wrap;
+      }
+      .hero-actions a {
+        padding: 0.75rem 1.75rem;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 1rem;
+        font-weight: 500;
+        transition: all 0.15s;
+      }
+      .btn-primary {
+        background: #6ea8fe;
+        color: #0f0f0f;
+      }
+      .btn-primary:hover { background: #8bb9ff; }
+      .btn-secondary {
+        background: #1a1a1a;
+        color: #e0e0e0;
+        border: 1px solid #2a2a2a;
+      }
+      .btn-secondary:hover {
+        background: #222;
+        border-color: #6ea8fe;
+        color: #fff;
+      }
+
+      /* Code snippet */
+      .code-section {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 0 2rem 3rem;
+      }
+      .code-block {
+        background: #161616;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        padding: 1.5rem;
+        overflow-x: auto;
+        font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+        font-size: 0.85rem;
+        line-height: 1.7;
+        color: #c9d1d9;
+      }
+      .code-block .kw { color: #ff7b72; }
+      .code-block .str { color: #a5d6ff; }
+      .code-block .cmt { color: #8b949e; }
+      .code-block .fn { color: #d2a8ff; }
+      .code-block .prop { color: #79c0ff; }
+
+      /* Sections */
+      .section {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 3rem 2rem;
+      }
+      .section h2 {
+        font-size: 1.8rem;
+        color: #fff;
+        margin-bottom: 0.5rem;
+      }
+      .section .subtitle {
+        color: #888;
+        margin-bottom: 1.5rem;
+        font-size: 1rem;
+      }
+
+      /* Card grid */
+      .cards {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        gap: 1rem;
+      }
+      .card {
+        display: block;
+        padding: 1.25rem 1.5rem;
+        background: #1a1a1a;
+        border: 1px solid #2a2a2a;
+        border-radius: 10px;
+        color: #e0e0e0;
+        text-decoration: none;
+        transition: background 0.15s, border-color 0.15s, transform 0.15s;
+      }
+      .card:hover {
+        background: #222;
+        border-color: #6ea8fe;
+        transform: translateY(-2px);
+      }
+      .card h3 {
+        font-size: 1.1rem;
+        color: #fff;
+        margin-bottom: 0.35rem;
+      }
+      .card p {
+        font-size: 0.85rem;
+        color: #888;
+        line-height: 1.5;
+      }
+      .card .tech {
+        font-size: 0.75rem;
+        color: #555;
+        margin-top: 0.5rem;
+      }
+
+      /* Docs cards */
+      .docs-cards .card h3::before {
+        content: '📄 ';
+      }
+
+      /* Examples cards */
+      .examples-cards .card h3::before {
+        content: '▶ ';
+        color: #6ea8fe;
+      }
+
+      /* Footer */
+      footer {
+        border-top: 1px solid #1a1a1a;
+        padding: 2rem;
+        text-align: center;
+        color: #555;
+        font-size: 0.85rem;
+      }
+      footer a { color: #6ea8fe; text-decoration: none; }
+      footer a:hover { text-decoration: underline; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <a class="logo" href="./">τ tau</a>
+      <nav>
+        <a href="./docs/">Docs</a>
+        <a href="./examples/">Examples</a>
+        <a href="https://github.com/aled1027/pi-browser">GitHub</a>
+      </nav>
+    </header>
+
+    <div class="hero">
+      <h1>τ <span>tau</span></h1>
+      <p>A browser-based AI coding agent framework. Core library for AI-powered conversations, tool calling, streaming, and thread persistence — all client-side with no server.</p>
+      <div class="hero-actions">
+        <a class="btn-primary" href="./docs/">Read the Docs</a>
+        <a class="btn-secondary" href="./examples/">View Examples</a>
+      </div>
+    </div>
+
+    <div class="code-section">
+      <pre class="code-block"><span class="kw">import</span> { <span class="fn">Agent</span> } <span class="kw">from</span> <span class="str">"tau"</span>;
+
+<span class="kw">const</span> agent = <span class="kw">await</span> <span class="fn">Agent</span>.<span class="prop">create</span>({ <span class="prop">apiKey</span>: <span class="str">"sk-or-..."</span> });
+
+<span class="cmt">// Simple — just await it</span>
+<span class="kw">const</span> result = <span class="kw">await</span> agent.<span class="prop">prompt</span>(<span class="str">"Write hello world in Python"</span>);
+console.<span class="prop">log</span>(result.<span class="prop">text</span>);
+
+<span class="cmt">// Streaming — iterate for live updates</span>
+<span class="kw">const</span> stream = agent.<span class="prop">prompt</span>(<span class="str">"Create a React component"</span>);
+<span class="kw">for await</span> (<span class="kw">const</span> event <span class="kw">of</span> stream) {
+  <span class="kw">if</span> (event.<span class="prop">type</span> === <span class="str">"text_delta"</span>) updateUI(event.<span class="prop">delta</span>);
+}</pre>
+    </div>
+
+    <div class="section">
+      <h2>Documentation</h2>
+      <p class="subtitle">Learn how to build with tau</p>
+      <div class="cards docs-cards">
+        <a class="card" href="./docs/">
+          <h3>API Reference</h3>
+          <p>Full API docs for Agent, VirtualFS, Extensions, Skills, Prompt Templates, and more.</p>
+        </a>
+        <a class="card" href="./docs/#quick-start">
+          <h3>Quick Start</h3>
+          <p>Get up and running in minutes with simple and streaming examples.</p>
+        </a>
+        <a class="card" href="./docs/#extensions">
+          <h3>Extensions</h3>
+          <p>Add custom tools, listen to events, and request user input.</p>
+        </a>
+        <a class="card" href="./docs/#skills">
+          <h3>Skills</h3>
+          <p>On-demand instruction documents loaded by the model when needed.</p>
+        </a>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>Examples</h2>
+      <p class="subtitle">Live demos you can try right now</p>
+      <div class="cards examples-cards">
+        <a class="card" href="./examples/chat/">
+          <h3>Chat</h3>
+          <p>Minimal chat interface with file browser and tool use.</p>
+          <div class="tech">Lit · Vite</div>
+        </a>
+        <a class="card" href="./examples/tutor/">
+          <h3>Tutor</h3>
+          <p>AI tutor with lessons, code editor, and prompt templates.</p>
+          <div class="tech">Lit · Vite</div>
+        </a>
+        <a class="card" href="./examples/sveltekit-chat/">
+          <h3>SvelteKit Chat</h3>
+          <p>Chat app built with SvelteKit and Svelte 5.</p>
+          <div class="tech">SvelteKit · Svelte 5</div>
+        </a>
+      </div>
+    </div>
+
+    <footer>
+      <p>tau — <a href="https://github.com/aled1027/pi-browser">GitHub</a> · Inspired by <a href="https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent">pi coding agent</a></p>
+    </footer>
+  </body>
+</html>
