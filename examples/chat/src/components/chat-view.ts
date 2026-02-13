@@ -246,6 +246,7 @@ export class ChatView extends LitElement {
       outline: none;
       line-height: 1.4;
       box-sizing: border-box;
+      overflow-y: auto;
     }
 
     textarea:focus {
@@ -501,9 +502,24 @@ export class ChatView extends LitElement {
     this.scrollToBottom();
   }
 
+  private static readonly MAX_TEXTAREA_ROWS = 10;
+
   private handleInputChange(e: Event) {
-    this.input = (e.target as HTMLTextAreaElement).value;
+    const textarea = e.target as HTMLTextAreaElement;
+    this.input = textarea.value;
+    this.autoResizeTextarea(textarea);
     this.updateSuggestions();
+  }
+
+  private autoResizeTextarea(textarea: HTMLTextAreaElement) {
+    // Reset to single row to get correct scrollHeight
+    textarea.style.height = "auto";
+    const lineHeight = parseFloat(getComputedStyle(textarea).lineHeight) || 19.6;
+    const padding =
+      parseFloat(getComputedStyle(textarea).paddingTop) +
+      parseFloat(getComputedStyle(textarea).paddingBottom);
+    const maxHeight = lineHeight * ChatView.MAX_TEXTAREA_ROWS + padding;
+    textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
   }
 
   private updateSuggestions() {
@@ -570,6 +586,9 @@ export class ChatView extends LitElement {
 
     this.input = "";
     this.suggestions = [];
+    // Reset textarea height
+    const textarea = this.shadowRoot?.querySelector("textarea");
+    if (textarea) textarea.style.height = "auto";
     this.messages = [
       ...this.messages,
       { id: ChatView.nextId++, role: "user", content: text },

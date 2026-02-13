@@ -4,10 +4,13 @@ A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/).
 
 Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent).
 
+WARNING: THIS TOOL COULD RESULT IN HARMFUL CODE RUNNING IN YOUR BROWSER TAB.
+
 ## TODO:
 
 - Later: sync state or export. export would be download a zip and maybe could
 - Add CSP for security
+- Make sure the default extension are loaded by default instead of explicitly in the examples
 
 ## Quick start
 

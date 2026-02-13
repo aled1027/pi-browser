@@ -5,6 +5,7 @@
 import {
   Agent,
   askUserExtension,
+  runJavascriptExtension,
   codeReviewSkill,
   litComponentSkill,
   builtinTemplates,
@@ -13,7 +14,7 @@ import {
 export async function createAgent(apiKey: string): Promise<Agent> {
   return Agent.create({
     apiKey,
-    extensions: [askUserExtension],
+    extensions: [askUserExtension, runJavascriptExtension],
     skills: [codeReviewSkill, litComponentSkill],
     promptTemplates: builtinTemplates,
   });

@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { Agent, addExtensionExtension, askUserExtension, codeReviewSkill, litComponentSkill, builtinTemplates } from "pi-browser";
+import { Agent, addExtensionExtension, askUserExtension, runJavascriptExtension, codeReviewSkill, litComponentSkill, builtinTemplates } from "pi-browser";
 import "./api-key-screen.js";
 import "./chat-view.js";
 
@@ -32,7 +32,7 @@ export class AppRoot extends LitElement {
 
     this.agent = await Agent.create({
       apiKey: key,
-      extensions: [addExtensionExtension, askUserExtension],
+      extensions: [addExtensionExtension, askUserExtension, runJavascriptExtension],
       skills: [codeReviewSkill, litComponentSkill],
       promptTemplates: builtinTemplates,
     });

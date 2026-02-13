@@ -1,6 +1,6 @@
 import { LitElement, html, css } from "lit";
 import { customElement, state } from "lit/decorators.js";
-import { Agent, askUserExtension } from "pi-browser";
+import { Agent, askUserExtension, runJavascriptExtension } from "pi-browser";
 import { tutorTemplates, runCodeExtension } from "../plugins/index.js";
 import "./api-key-screen.js";
 import "./tutor-view.js";
@@ -108,7 +108,7 @@ export class TutorRoot extends LitElement {
     this.agent = await Agent.create({
       apiKey: key,
       systemPrompt: TUTOR_SYSTEM_PROMPT,
-      extensions: [askUserExtension, runCodeExtension],
+      extensions: [askUserExtension, runJavascriptExtension, runCodeExtension],
       promptTemplates: tutorTemplates,
     });
     this.started = true;

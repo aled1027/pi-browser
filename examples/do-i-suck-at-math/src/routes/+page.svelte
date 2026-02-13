@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { Agent, askUserExtension } from "pi-browser";
+  import { Agent, askUserExtension, runJavascriptExtension } from "pi-browser";
   import type { UserInputRequest, UserInputResponse } from "pi-browser";
   import { onMount } from "svelte";
   import { mathAssessmentSkill } from "$lib/math-assessment-skill";
@@ -35,7 +35,7 @@
   async function initializeAgent(apiKey: string) {
     const a = await Agent.create({
       apiKey,
-      extensions: [askUserExtension],
+      extensions: [askUserExtension, runJavascriptExtension],
       skills: [mathAssessmentSkill],
       systemPrompt: `You are a standardized math assessment engine.
 
