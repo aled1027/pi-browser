@@ -25,7 +25,7 @@ import { ThreadStorage, type ThreadMeta } from "./storage.js";
 
 export type { ThreadMeta };
 
-const DEFAULT_MODEL = "anthropic/claude-opus-4.5";
+const DEFAULT_MODEL = "minimax/minimax-m2.5";
 
 export interface AgentConfig {
   apiKey: string;
@@ -178,7 +178,6 @@ export class Agent implements ExtensionHost {
   private _fs!: VirtualFS;
   private builtinTools!: ToolDefinition[];
   private messages: Message[] = [];
-  private config: AgentConfig;
   private abortController: AbortController | null = null;
   private _ready: Promise<void>;
 
@@ -186,6 +185,9 @@ export class Agent implements ExtensionHost {
   private storage: ThreadStorage;
   private _activeThreadId: string | null = null;
   private _isFirstUserMessage = true;
+
+  // Public config
+  config: AgentConfig;
 
   // ---------------------------------------------------------------------------
   // Construction
