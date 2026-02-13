@@ -569,7 +569,7 @@ export class Agent implements ExtensionHost {
     try {
       for await (const event of runAgent(
         this.messages,
-        this.tools,
+        () => this.tools,
         { apiKey: this.config.apiKey, model: this.config.model!, timeout: this.config.timeout },
         this.abortController.signal
       )) {
