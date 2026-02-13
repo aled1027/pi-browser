@@ -13,8 +13,6 @@ Inspired by the real [pi coding agent](https://github.com/badlogic/pi-mono/tree/
 ## TODO:
 
 - Later: sync state or export. export would be download a zip and maybe could
-- Make sure the default extension are loaded by default instead of explicitly in the examples
-- CSP broke svelte-kit demo
 
 ## Quick start
 
