@@ -4,10 +4,9 @@ A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/).
 
 Inspired by the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) and [co-do](https://co-do.xyz/).
 
-Website:https://aled1027.github.com/tau
-Docs:https://aled1027.github.com/tau/docs
-Demos: https://aled1027.github.com/tau/examples
-Check out tau's website: https://aled1027.github.com/tau
+- Website:https://aled1027.github.com/tau
+- Docs:https://aled1027.github.com/tau/docs
+- Demos: https://aled1027.github.com/tau/examples
 
 <div style="background: #ffcccc; color: #b20000; font-weight: bold; padding: 16px; border-radius: 8px; border: 2px solid #b20000; font-size: 1.2em; margin: 16px 0;">
   ⚠️ WARNING: This tool allows execution of <u>arbitrary code</u> in your browser tab.<br>
