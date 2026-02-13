@@ -13,6 +13,7 @@
 import { describe, it, expect } from "vitest";
 
 // Skip the entire suite if no API key is provided
+// TODO: figure this out
 // const apiKey = process.env.OPENROUTER_API_KEY;
 const apiKey = "foo"
 const describeIntegration = apiKey ? describe : describe.skip;

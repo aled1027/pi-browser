@@ -300,7 +300,7 @@
     <div class="chat-main">
       <div class="header">
         <span class="title">π browser</span>
-        <span class="model">anthropic/claude-sonnet-4 · SvelteKit</span>
+        <span class="model">hardcoded model goes here · SvelteKit</span>
       </div>
 
       <div class="messages" bind:this={messagesEl}>

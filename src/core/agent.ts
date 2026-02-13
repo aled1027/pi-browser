@@ -25,6 +25,8 @@ import { ThreadStorage, type ThreadMeta } from "./storage.js";
 
 export type { ThreadMeta };
 
+const DEFAULT_MODEL = "anthropic/claude-opus-4.5";
+
 export interface AgentConfig {
   apiKey: string;
   model?: string;
@@ -221,9 +223,15 @@ export class Agent implements ExtensionHost {
    * This is the recommended way to create an Agent.
    */
   static async create(config: AgentConfig): Promise<Agent> {
+    if (!config.model) {
+      config.model = DEFAULT_MODEL;
+    }
     const agent = new Agent(config);
     await agent.ready();
     await agent.restoreOrCreateThread();
+    if (typeof window !== "undefined") {
+      (window as any).__PI_AGENT__ = agent;
+    }
     return agent;
   }
 
@@ -560,7 +568,7 @@ export class Agent implements ExtensionHost {
       for await (const event of runAgent(
         this.messages,
         this.tools,
-        { apiKey: this.config.apiKey, model: this.config.model, timeout: this.config.timeout },
+        { apiKey: this.config.apiKey, model: this.config.model!, timeout: this.config.timeout },
         this.abortController.signal
       )) {
         if (event.type === "text_delta") {

@@ -8,11 +8,10 @@
 import type { Message, ToolDefinition, AgentEvent, ToolCall, ToolResult } from "./types.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
-const DEFAULT_MODEL = "anthropic/claude-sonnet-4";
 
 interface OpenRouterOptions {
   apiKey: string;
-  model?: string;
+  model: string;
   /** Per-request timeout in milliseconds. Default: 120000 (2 minutes). */
   timeout?: number;
 }
@@ -43,7 +42,7 @@ export async function* runAgent(
   options: OpenRouterOptions,
   signal?: AbortSignal
 ): AsyncGenerator<AgentEvent> {
-  const model = options.model ?? DEFAULT_MODEL;
+  const model = options.model;
   const timeout = options.timeout ?? DEFAULT_TIMEOUT;
 
   // Build OpenAI-format messages, preserving tool_calls and tool_call_id

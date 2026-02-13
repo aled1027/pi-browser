@@ -656,7 +656,7 @@ export class ChatView extends LitElement {
               ?disabled=${this.streaming}
               title="Clear all threads and reset agent"
             >Clear</button>
-            <span class="model" style="margin-left: 12px;">anthropic/claude-sonnet-4</span>
+            <span class="model" style="margin-left: 12px;">hardcoded model goes here</span>
             <span style="font-size: 12px; margin-left: 12px; color: var(--text-muted); opacity: 0.7;">chat</span>
           </span>
         </div>
