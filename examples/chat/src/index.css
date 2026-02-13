@@ -6,6 +6,7 @@
   padding: 0;
 }
 
+/* Dark theme (default) */
 :root {
   --bg: #1a1a2e;
   --bg-secondary: #16213e;
@@ -17,6 +18,22 @@
   --border: #2a2a4a;
   --error: #e74c3c;
   --tool-bg: #1e1e3a;
+}
+
+/* Light theme — auto-applied when system prefers light */
+@media (prefers-color-scheme: light) {
+  :root {
+    --bg: #f5f5f7;
+    --bg-secondary: #ffffff;
+    --bg-input: #e8eaf0;
+    --text: #1a1a2e;
+    --text-muted: #6b7280;
+    --accent: #0969da;
+    --accent-dim: #74b9e8;
+    --border: #d1d5db;
+    --error: #dc2626;
+    --tool-bg: #eef1f6;
+  }
 }
 
 html,

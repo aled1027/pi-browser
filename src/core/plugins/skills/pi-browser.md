@@ -313,6 +313,60 @@ Usage: `/scaffold typescript myapp with tests and linting`
 
 ---
 
+## Self-Modification via `window.__PI_AGENT__`
+
+The running Agent instance is exposed at `window.__PI_AGENT__`. You can access it from the `run_javascript` tool to modify yourself at runtime — no need to ask the user to write code or reload the page.
+
+### What you can do
+
+- **Register new tools**: `window.__PI_AGENT__.registerTool({ name, description, parameters, execute })`
+- **Add extensions dynamically**: `await window.__PI_AGENT__.addExtension(\`(agent) => { ... }\`, "my-ext")`
+- **Remove extensions**: `await window.__PI_AGENT__.removeExtension("my-ext")`
+- **Add skills**: `await window.__PI_AGENT__.addSkill({ name, description, content })`
+- **Remove skills**: `await window.__PI_AGENT__.removeSkill("skill-name")`
+- **Read messages**: `window.__PI_AGENT__.getMessages()`
+- **Access VFS**: `window.__PI_AGENT__.fs`
+- **Listen to events**: `window.__PI_AGENT__.on("agent_event", (e) => { ... })`
+
+### Examples via `run_javascript`
+
+Register a tool on the fly:
+```javascript
+const agent = window.__PI_AGENT__;
+agent.registerTool({
+  name: "current_time",
+  description: "Return the current date and time",
+  parameters: { type: "object", properties: {}, required: [] },
+  execute: async () => ({ content: new Date().toLocaleString(), isError: false }),
+});
+return "Tool registered";
+```
+
+Add a skill dynamically:
+```javascript
+await window.__PI_AGENT__.addSkill({
+  name: "my-guide",
+  description: "Custom guidelines for this project",
+  content: "# My Guide\n\n- Always use TypeScript\n- Prefer composition over inheritance",
+});
+return "Skill added";
+```
+
+Add a full extension (persisted to VFS):
+```javascript
+await window.__PI_AGENT__.addExtension(`(agent) => {
+  agent.registerTool({
+    name: "word_count",
+    description: "Count words in text",
+    parameters: { type: "object", properties: { text: { type: "string" } }, required: ["text"] },
+    execute: async (args) => ({ content: String(args.text.split(/\\s+/).length), isError: false }),
+  });
+}`, "word-count");
+return "Extension added";
+```
+
+---
+
 ## Key Types Reference
 
 ### AgentConfig

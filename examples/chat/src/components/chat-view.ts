@@ -1,9 +1,17 @@
 import { LitElement, html, css, nothing } from "lit";
 import { customElement, property, state, query } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
+import { unsafeHTML } from "lit/directives/unsafe-html.js";
+import { marked } from "marked";
 import type { Agent, PromptTemplate, UserInputRequest, UserInputResponse, ToolCall, ThreadMeta } from "pi-browser";
 import "./user-input-form.js";
 import "./file-browser.js";
+
+// Configure marked for sensible defaults
+marked.setOptions({
+  breaks: true,
+  gfm: true,
+});
 
 interface ChatMessage {
   id: number;
@@ -172,9 +180,97 @@ export class ChatView extends LitElement {
     }
 
     .message-content {
-      white-space: pre-wrap;
       word-break: break-word;
-      line-height: 1.5;
+      line-height: 1.6;
+    }
+
+    .message-content p {
+      margin: 0 0 0.75em 0;
+    }
+
+    .message-content p:last-child {
+      margin-bottom: 0;
+    }
+
+    .message-content pre {
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 10px 12px;
+      overflow-x: auto;
+      font-size: 13px;
+      margin: 0.5em 0;
+    }
+
+    .message-content code {
+      background: var(--bg-input);
+      border-radius: 3px;
+      padding: 1px 4px;
+      font-size: 0.9em;
+    }
+
+    .message-content pre code {
+      background: none;
+      padding: 0;
+      border-radius: 0;
+      font-size: inherit;
+    }
+
+    .message-content ul,
+    .message-content ol {
+      margin: 0.5em 0;
+      padding-left: 1.5em;
+    }
+
+    .message-content li {
+      margin: 0.25em 0;
+    }
+
+    .message-content blockquote {
+      border-left: 3px solid var(--accent-dim);
+      margin: 0.5em 0;
+      padding: 0.25em 0.75em;
+      color: var(--text-muted);
+    }
+
+    .message-content h1,
+    .message-content h2,
+    .message-content h3,
+    .message-content h4 {
+      margin: 0.75em 0 0.25em 0;
+      line-height: 1.3;
+    }
+
+    .message-content h1 { font-size: 1.4em; }
+    .message-content h2 { font-size: 1.2em; }
+    .message-content h3 { font-size: 1.1em; }
+
+    .message-content table {
+      border-collapse: collapse;
+      margin: 0.5em 0;
+    }
+
+    .message-content th,
+    .message-content td {
+      border: 1px solid var(--border);
+      padding: 4px 8px;
+      text-align: left;
+    }
+
+    .message-content th {
+      background: var(--bg-input);
+      font-weight: 600;
+    }
+
+    .message-content a {
+      color: var(--accent);
+      text-decoration: underline;
+    }
+
+    .message-content hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1em 0;
     }
 
     .cursor {
@@ -711,7 +807,7 @@ export class ChatView extends LitElement {
           ? this.renderToolCalls(msg.toolCalls)
           : nothing}
         <div class="message-content">
-          ${msg.content}${isStreaming
+          ${unsafeHTML(marked.parse(msg.content) as string)}${isStreaming
             ? html`<span class="cursor">▊</span>`
             : nothing}
         </div>
@@ -770,7 +866,7 @@ export class ChatView extends LitElement {
               title="Clear all threads and reset agent"
               style="margin-left: 8px;"
             >Clear</button>
-            <span class="model" style="margin-left: 12px;">hardcoded model goes here</span>
+            <span class="model" style="margin-left: 12px;">${this.agent?.config?.model ?? "default model"}</span>
             <span style="font-size: 12px; margin-left: 12px; color: var(--text-muted); opacity: 0.7;">chat</span>
           </span>
         </div>
