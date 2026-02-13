@@ -1,0 +1,70 @@
+name: Deploy Examples to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build tau library
+        run: npm run build
+
+      - name: Build chat example
+        working-directory: examples/chat
+        run: npx vite build --base /pi-browser/chat/
+
+      - name: Build tutor example
+        working-directory: examples/tutor
+        run: npx vite build --base /pi-browser/tutor/
+
+      - name: Build sveltekit-chat example
+        working-directory: examples/sveltekit-chat
+        env:
+          BASE_PATH: /pi-browser/sveltekit-chat
+        run: npx svelte-kit sync && npx vite build
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site/chat _site/tutor _site/sveltekit-chat
+          cp examples/index.html _site/
+          cp -r examples/chat/dist/* _site/chat/
+          cp -r examples/tutor/dist/* _site/tutor/
+          cp -r examples/sveltekit-chat/build/* _site/sveltekit-chat/
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
