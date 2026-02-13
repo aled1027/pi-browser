@@ -340,7 +340,7 @@ describe("Agent.prompt()", () => {
 
     expect(mockRunAgent).toHaveBeenCalledWith(
       expect.any(Array),
-      expect.any(Array),
+      expect.any(Function),
       { apiKey: "my-key", model: "openai/gpt-4" },
       expect.any(AbortSignal),
     );
