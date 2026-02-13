@@ -1365,3 +1365,258 @@ describe("Agent persistence and restoration", () => {
     expect(sharedStorageState.vfs["/.tau/skills/vfs-skill.md"]).toBeUndefined();
   });
 });
+
+// ─── Assertions on what's sent to the LLM ───────────────────────────
+
+describe("Agent → runAgent call verification", () => {
+  beforeEach(() => {
+    mockRunAgent.mockReset();
+    sharedStorageState.reset();
+  });
+
+  it("should send system + user messages to runAgent", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    await agent.prompt("Hello there");
+
+    expect(mockRunAgent).toHaveBeenCalledOnce();
+    const [messages] = mockRunAgent.mock.calls[0] as [Message[], any, any, any];
+    // system + user (the user message is pushed before calling runAgent)
+    expect(messages.length).toBeGreaterThanOrEqual(2);
+    expect(messages[0].role).toBe("system");
+    // Find the user message (it may be at index 1 or later)
+    const userMsg = messages.find((m: Message) => m.role === "user");
+    expect(userMsg).toBeDefined();
+    expect(userMsg!.content).toBe("Hello there");
+  });
+
+  it("should send expanded template text, not raw /command", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({
+      apiKey: "test-key",
+      promptTemplates: [{
+        name: "greet",
+        description: "Greet someone",
+        body: "Hello $1!",
+      }],
+    });
+
+    await agent.prompt("/greet World");
+
+    const [messages] = mockRunAgent.mock.calls[0] as [Message[], any, any, any];
+    const userMsg = messages.find((m: Message) => m.role === "user");
+    expect(userMsg!.content).toBe("Hello World!");
+  });
+
+  it("should include all registered tools in the tools array", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({
+      apiKey: "test-key",
+      extensions: [
+        (host) => {
+          host.registerTool({
+            name: "custom_tool",
+            description: "Custom",
+            parameters: { type: "object", properties: {} },
+            execute: async () => ({ content: "ok", isError: false }),
+          });
+        },
+      ],
+    });
+    await agent.prompt("test");
+
+    const [, tools] = mockRunAgent.mock.calls[0] as [any, any[], any, any];
+    const toolNames = tools.map((t: any) => t.name);
+    expect(toolNames).toContain("read");
+    expect(toolNames).toContain("write");
+    expect(toolNames).toContain("edit");
+    expect(toolNames).toContain("list");
+    expect(toolNames).toContain("custom_tool");
+  });
+
+  it("should include read_skill tool when skills are present", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({
+      apiKey: "test-key",
+      skills: [{
+        name: "my-skill",
+        description: "My skill",
+        content: "# Content",
+      }],
+    });
+    await agent.prompt("test");
+
+    const [, tools] = mockRunAgent.mock.calls[0] as [any, any[], any, any];
+    const toolNames = tools.map((t: any) => t.name);
+    expect(toolNames).toContain("read_skill");
+  });
+
+  it("should NOT include read_skill tool when no skills exist", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    await agent.prompt("test");
+
+    const [, tools] = mockRunAgent.mock.calls[0] as [any, any[], any, any];
+    const toolNames = tools.map((t: any) => t.name);
+    expect(toolNames).not.toContain("read_skill");
+  });
+
+  it("should pass correct options (apiKey, model, timeout)", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({
+      apiKey: "my-key",
+      model: "anthropic/claude-sonnet-4",
+      timeout: 30000,
+    });
+    await agent.prompt("test");
+
+    const [, , options] = mockRunAgent.mock.calls[0] as [any, any, any, any];
+    expect(options).toEqual({
+      apiKey: "my-key",
+      model: "anthropic/claude-sonnet-4",
+      timeout: 30000,
+    });
+  });
+
+  it("should send conversation history on second prompt", async () => {
+    // Capture the messages at the time runAgent is called (before mutation)
+    const capturedMessages: Message[][] = [];
+    mockRunAgent.mockImplementation((...args: any[]) => {
+      capturedMessages.push([...(args[0] as Message[])]);
+      return eventsFrom([textDelta("First reply"), turnEnd()]);
+    });
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    await agent.prompt("First question");
+
+    mockRunAgent.mockImplementation((...args: any[]) => {
+      capturedMessages.push([...(args[0] as Message[])]);
+      return eventsFrom([textDelta("Second reply"), turnEnd()]);
+    });
+    await agent.prompt("Second question");
+
+    // Second call should have: system + user1 + assistant1 + user2
+    const msgs = capturedMessages[1];
+    expect(msgs).toHaveLength(4);
+    expect(msgs[0].role).toBe("system");
+    expect(msgs[1].role).toBe("user");
+    expect(msgs[1].content).toBe("First question");
+    expect(msgs[2].role).toBe("assistant");
+    expect(msgs[2].content).toBe("First reply");
+    expect(msgs[3].role).toBe("user");
+    expect(msgs[3].content).toBe("Second question");
+  });
+
+  it("should include tool loop messages in history for subsequent calls", async () => {
+    const assistantToolMsg: Message = {
+      role: "assistant",
+      content: "",
+      toolCalls: [{ id: "tc1", name: "read", arguments: { path: "/x" } }],
+    };
+    const toolResultMsg: Message = {
+      role: "tool",
+      content: "file content",
+      toolCallId: "tc1",
+    };
+
+    mockRunAgent.mockReturnValue(eventsFrom([
+      toolLoopMessage(assistantToolMsg),
+      toolLoopMessage(toolResultMsg),
+      textDelta("Here is the file"),
+      turnEnd(),
+    ]));
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    await agent.prompt("Read /x");
+
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("Sure"), turnEnd()]));
+    await agent.prompt("Thanks");
+
+    const [messages] = mockRunAgent.mock.calls[1] as [Message[], any, any, any];
+    // Verify the conversation history contains tool loop messages
+    const assistantMsgs = messages.filter((m: Message) => m.role === "assistant");
+    const toolMsgs = messages.filter((m: Message) => m.role === "tool");
+    const userMsgs = messages.filter((m: Message) => m.role === "user");
+
+    // Should have 2 assistant messages (one with toolCalls, one with text)
+    expect(assistantMsgs.length).toBeGreaterThanOrEqual(2);
+    // The first assistant message should have tool calls
+    const assistantWithTools = assistantMsgs.find((m: Message) => m.toolCalls && m.toolCalls.length > 0);
+    expect(assistantWithTools).toBeDefined();
+    expect(assistantWithTools!.toolCalls![0].name).toBe("read");
+
+    // Should have the tool result
+    expect(toolMsgs).toHaveLength(1);
+    expect(toolMsgs[0].toolCallId).toBe("tc1");
+
+    // Should have the final assistant text
+    const textAssistant = assistantMsgs.find((m: Message) => m.content === "Here is the file");
+    expect(textAssistant).toBeDefined();
+
+    // Should have 2 user messages
+    expect(userMsgs).toHaveLength(2);
+  });
+
+  it("should pass an AbortSignal to runAgent", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    await agent.prompt("test");
+
+    const [, , , signal] = mockRunAgent.mock.calls[0] as [any, any, any, AbortSignal];
+    expect(signal).toBeInstanceOf(AbortSignal);
+    expect(signal.aborted).toBe(false);
+  });
+
+  it("should include skill descriptions in system prompt sent to runAgent", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({
+      apiKey: "test-key",
+      skills: [{
+        name: "code-review",
+        description: "Review code for quality",
+        content: "# Review instructions",
+      }],
+    });
+    await agent.prompt("test");
+
+    const [messages] = mockRunAgent.mock.calls[0] as [Message[], any, any, any];
+    const systemMsg = messages[0];
+    expect(systemMsg.role).toBe("system");
+    expect(systemMsg.content).toContain("code-review");
+    expect(systemMsg.content).toContain("available_skills");
+  });
+
+  it("should reflect dynamically added skills in system prompt on next prompt", async () => {
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+
+    const agent = await Agent.create({ apiKey: "test-key" });
+    await agent.prompt("before skill");
+
+    // System prompt should NOT mention any skills
+    const [messagesBefore] = mockRunAgent.mock.calls[0] as [Message[], any, any, any];
+    expect(messagesBefore[0].content).not.toContain("available_skills");
+
+    // Add skill dynamically
+    await agent.addSkill({
+      name: "dynamic-skill",
+      description: "Dynamically added",
+      content: "# Dynamic",
+    });
+
+    mockRunAgent.mockReturnValue(eventsFrom([textDelta("ok"), turnEnd()]));
+    await agent.prompt("after skill");
+
+    // Now system prompt should include the skill
+    const [messagesAfter] = mockRunAgent.mock.calls[1] as [Message[], any, any, any];
+    expect(messagesAfter[0].content).toContain("dynamic-skill");
+    expect(messagesAfter[0].content).toContain("available_skills");
+  });
+});
