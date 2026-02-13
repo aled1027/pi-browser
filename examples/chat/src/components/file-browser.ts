@@ -155,18 +155,11 @@ export class FileBrowser extends LitElement {
       padding: 12px;
     }
 
-    .file-content pre {
-      margin: 0;
-      white-space: pre-wrap;
-      word-break: break-word;
-      line-height: 1.5;
-      font-size: 13px;
-      color: var(--text);
-      font-family: inherit;
-    }
-
     .line-numbers {
       display: flex;
+      font-size: 13px;
+      line-height: 1.5;
+      font-family: inherit;
     }
 
     .line-nums {
@@ -177,14 +170,15 @@ export class FileBrowser extends LitElement {
       user-select: none;
       color: var(--text-muted);
       opacity: 0.5;
-      font-size: 12px;
-      line-height: 1.5;
       white-space: pre;
     }
 
     .line-code {
       flex: 1;
       min-width: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: var(--text);
     }
 
     .refresh-btn {
@@ -311,7 +305,7 @@ export class FileBrowser extends LitElement {
         <div class="file-content">
           <div class="line-numbers">
             <div class="line-nums">${lineNums}</div>
-            <div class="line-code"><pre>${this.fileContent}</pre></div>
+            <div class="line-code">${this.fileContent}</div>
           </div>
         </div>
       </div>
