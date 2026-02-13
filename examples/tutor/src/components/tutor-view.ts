@@ -700,7 +700,7 @@ export class TutorView extends LitElement {
       <div class="main-wrapper">
         <div class="header">
           <div class="header-left">
-            <span class="title">π tutor</span>
+            <span class="title">τ tutor</span>
             <span class="lesson-name">${this.currentLesson}</span>
           </div>
           <div class="header-actions">

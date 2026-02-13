@@ -896,7 +896,7 @@ export class ChatView extends LitElement {
       ${this.renderSidebar()}
       <div class="chat-main">
         <div class="header">
-          <span class="title">π browser</span>
+          <span class="title">τ browser</span>
           <span>
             <button
               class="file-sidebar-toggle ${this.showFiles ? "active" : ""}"

@@ -247,7 +247,7 @@
   <!-- API Key Screen -->
   <div class="api-key-screen">
     <div class="card">
-      <h1>π browser</h1>
+      <h1>τ browser</h1>
       <p class="subtitle">A browser-based coding agent — SvelteKit</p>
       <label for="api-key">OpenRouter API Key</label>
       <input
@@ -299,7 +299,7 @@
     <!-- Main chat -->
     <div class="chat-main">
       <div class="header">
-        <span class="title">π browser</span>
+        <span class="title">τ browser</span>
         <span class="model">hardcoded model goes here · SvelteKit</span>
       </div>
 

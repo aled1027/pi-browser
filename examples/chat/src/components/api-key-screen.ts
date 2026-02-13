@@ -114,7 +114,7 @@ export class ApiKeyScreen extends LitElement {
   render() {
     return html`
       <div class="card">
-        <h1>π browser</h1>
+        <h1>τ browser</h1>
         <p class="subtitle">A browser-based coding agent</p>
         <label for="api-key">OpenRouter API Key</label>
         <input

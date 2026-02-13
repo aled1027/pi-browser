@@ -5,7 +5,7 @@ import { tutorTemplates, runCodeExtension } from "../plugins/index.js";
 import "./api-key-screen.js";
 import "./tutor-view.js";
 
-const TUTOR_SYSTEM_PROMPT = `You are π tutor, a friendly and patient tutor running in the browser. You can teach any subject the student asks about.
+const TUTOR_SYSTEM_PROMPT = `You are τ tutor, a friendly and patient tutor running in the browser. You can teach any subject the student asks about.
 
 ## Your role
 You teach by guiding, not by giving answers. You explain concepts clearly, present exercises, check student work, and give encouraging feedback.

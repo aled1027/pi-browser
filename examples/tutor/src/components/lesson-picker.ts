@@ -172,7 +172,7 @@ export class LessonPicker extends LitElement {
     return html`
       <div class="container">
         <div class="heading">
-          <h1>π tutor</h1>
+          <h1>τ tutor</h1>
           <p class="subtitle">What would you like to learn today?</p>
         </div>
 
