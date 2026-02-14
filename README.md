@@ -1,6 +1,6 @@
 # tau
 
-A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/). Includes a core agent library and several example applications. Tau is by the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) and [co-do](https://co-do.xyz/).
+A browser-based AI coding agent powered by [OpenRouter](https://openrouter.ai/). Includes a core agent library and several example applications. Tau is inpired by the [pi coding agent](https://github.com/badlogic/pi-mono/tree/main/packages/coding-agent) and [co-do](https://co-do.xyz/).
 
 - Website:https://aled1027.github.com/tau
 - Docs:https://aled1027.github.com/tau/docs
